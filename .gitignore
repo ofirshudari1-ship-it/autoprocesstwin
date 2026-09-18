@@ -28,3 +28,8 @@ AutoProcessTwin-Setup-*.exe
 Thumbs.db
 Desktop.ini
 .DS_Store
+SPEC.md
+CHANGELOG.md
+PROJECT.md
+RELEASE-CHECKLIST.md
+DELETIONS.md
