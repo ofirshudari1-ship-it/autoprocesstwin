@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Reconstructed project file — none existed before. Framework target and references
+    were derived from the actual `using` statements in this folder: System.Web.Script.
+    Serialization (JavaScriptSerializer) only exists in classic .NET Framework, so this
+    stays net48, not net8.0. WPF only (no WinForms) in this component.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>AutoProcessTwin</AssemblyName>
+    <RootNamespace>AutoProcessTwin</RootNamespace>
+    <ApplicationIcon>..\AppIcon.ico</ApplicationIcon>
+    <Product>AutoProcessTwin</Product>
+    <Company>AutoProcessTwin</Company>
+    <AssemblyTitle>AutoProcessTwin</AssemblyTitle>
+    <Description>Background activity recorder and local morning briefing.</Description>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Web.Extensions" />
+    <!-- ProtectedData/DataProtectionScope (CryptoHelper.cs) live in System.Security.dll,
+         a separate Framework assembly from System.Security.Cryptography's core types. -->
+    <Reference Include="System.Security" />
+  </ItemGroup>
+
+</Project>
