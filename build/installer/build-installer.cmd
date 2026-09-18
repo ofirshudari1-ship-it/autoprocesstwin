@@ -27,12 +27,12 @@ if errorlevel 1 (
 )
 
 echo.
-echo === שלב 3: מקמפל את AutoProcessTwin-Setup-0.5.2.exe ===
+echo === שלב 3: מקמפל את AutoProcessTwin-Setup-0.5.3.exe ===
 "%CSC%" -nologo -target:winexe -win32icon:..\app\AppIcon.ico ^
   -r:System.Windows.Forms.dll -r:System.Drawing.dll ^
   -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll ^
   -resource:payload.zip,AutoProcessTwinSetup.payload.zip ^
-  -out:"..\..\AutoProcessTwin-Setup-0.5.2.exe" Setup.cs
+  -out:"..\..\AutoProcessTwin-Setup-0.5.3.exe" Setup.cs
 if errorlevel 1 (
     echo קומפילציית ההתקנה נכשלה.
     exit /b 1
@@ -40,5 +40,5 @@ if errorlevel 1 (
 
 del payload.zip
 echo.
-echo מוכן: ..\..\AutoProcessTwin-Setup-0.5.2.exe
+echo מוכן: ..\..\AutoProcessTwin-Setup-0.5.3.exe
 endlocal
