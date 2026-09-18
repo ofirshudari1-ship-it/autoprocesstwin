@@ -117,10 +117,10 @@
     <h1 data-t="hero_h1">Find the hours your team loses to repetitive work</h1>
     <p class="tagline" data-t="hero_tagline">AutoProcess Twin quietly watches which everyday tasks repeat — CRM entries, file transfers, copy-paste busywork — and shows you exactly where automation would save real time each month.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="../AutoProcessTwin-Setup-0.5.1.exe" data-t="hero_cta_download">Download for Windows — free</a>
+      <a class="btn btn-primary" href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases/latest" data-t="hero_cta_download">Download for Windows — free</a>
       <a class="btn btn-ghost" href="#how" data-t="hero_cta_how">See how it works</a>
     </div>
-    <p class="version-note" data-t="hero_version_note">Version 0.5.1 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere</p>
+    <p class="version-note" data-t="hero_version_note">Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically</p>
   </section>
 
   <!-- 2 & 3. What it does + screenshot -->
@@ -163,6 +163,32 @@
     </div>
   </section>
 
+  <!-- 4b. Automatic updates -->
+  <section id="updates">
+    <h2 data-t="updates_h2">Automatic updates</h2>
+    <p class="section-lead" data-t="updates_p">The app checks GitHub for a newer version shortly after launch (at most once per session) and lets you know with a quiet notification — it never re-downloads or reinstalls anything for you, and it never phones home for anything besides that one version check. You can turn the check off in Settings, or trigger it manually from the Help tab. The source of truth for every release is <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin" target="_blank" rel="noopener">github.com/ofirshudari1-ship-it/autoprocesstwin</a>.</p>
+  </section>
+
+  <!-- 4c. Version history -->
+  <section id="changelog">
+    <h2 data-t="changelog_h2">Version history</h2>
+    <p class="section-lead" data-t="changelog_lead">Full changelog: <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/blob/master/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md on GitHub</a>. Recent highlights:</p>
+    <div class="cards">
+      <div class="card">
+        <h3 data-t="cl1_h">0.5.3</h3>
+        <p data-t="cl1_p">Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check described above.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="cl2_h">0.5.2</h3>
+        <p data-t="cl2_p">Installer visual polish — themed checkboxes and progress bar in the setup wizard, matching the app's dark-slate + emerald look throughout.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="cl3_h">0.5.1</h3>
+        <p data-t="cl3_p">Installer now defaults to Program Files (admin rights/UAC required at install time only) instead of the per-user AppData folder.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- 5. FAQ -->
   <section class="faq">
     <h2 data-t="faq_h2">Questions people actually ask</h2>
@@ -196,6 +222,11 @@
       <summary data-t="faq6_q">How do I uninstall it, and does it clean up fully?</summary>
       <p data-t="faq6_a">Windows Settings → Apps → AutoProcess Twin → Uninstall. It removes the installed files, shortcuts, and its registry entry; you'll be asked separately whether to also delete your recorded data.</p>
     </details>
+
+    <details>
+      <summary data-t="faq7_q">Does it update itself automatically?</summary>
+      <p data-t="faq7_a">No — same report-only principle as pattern detection. A few seconds after launch, once per session, the app makes a single check against the project's public <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases" target="_blank" rel="noopener">GitHub Releases</a> page. If a newer version is tagged there, you get a quiet, dismissible notification linking to the release notes — nothing is downloaded or installed without you clicking through and choosing to. Any network failure is silent and never interrupts the app.</p>
+    </details>
   </section>
 
   <!-- 7. Privacy -->
@@ -222,6 +253,7 @@
 <footer>
   <div class="links">
     <a href="#privacy" data-t="footer_privacy">Privacy</a>
+    <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin" data-t="footer_github">GitHub</a>
     <a href="https://digi-transform.com" data-t="footer_more">More tools</a>
     <a href="mailto:ofirshudari1@gmail.com" data-t="footer_contact">Contact</a>
   </div>
@@ -237,7 +269,7 @@
       hero_tagline:"AutoProcess Twin quietly watches which everyday tasks repeat — CRM entries, file transfers, copy-paste busywork — and shows you exactly where automation would save real time each month.",
       hero_cta_download:"Download for Windows — free",
       hero_cta_how:"See how it works",
-      hero_version_note:"Version 0.5.1 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere",
+      hero_version_note:"Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically",
       how_h2:"What it does, and why it exists",
       how_lead:"Most repetitive work never gets automated because nobody has hard numbers on how much time it actually costs. AutoProcess Twin builds those numbers automatically: it records which app and window title is active every 20 seconds, groups the recurring ones into patterns, and turns that into a monthly picture of where manual work is eating hours — so a manager can decide where automation or AI actually pays off, instead of guessing.",
       how_screenshot:"ASSET · Product screenshot not captured yet — the \"Repeated Actions\" tab (pattern list, category badges, trend arrows) will go here once available.",
@@ -254,6 +286,16 @@
       feat5_p:"The tool never sends emails, touches your CRM, or takes any action on its own. It only observes and recommends — every action stays with a human.",
       feat6_h:"Runs entirely on your PC",
       feat6_p:"SQLite database on your machine, no cloud sync, no account. An optional AI summary feature is off by default and only sends aggregated numbers, never screenshots or raw text.",
+      updates_h2:"Automatic updates",
+      updates_p:"The app checks GitHub for a newer version shortly after launch (at most once per session) and lets you know with a quiet notification — it never re-downloads or reinstalls anything for you, and it never phones home for anything besides that one version check. You can turn the check off in Settings, or trigger it manually from the Help tab. The source of truth for every release is github.com/ofirshudari1-ship-it/autoprocesstwin.",
+      changelog_h2:"Version history",
+      changelog_lead:"Full changelog: CHANGELOG.md on GitHub. Recent highlights:",
+      cl1_h:"0.5.3",
+      cl1_p:"Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check described above.",
+      cl2_h:"0.5.2",
+      cl2_p:"Installer visual polish — themed checkboxes and progress bar in the setup wizard, matching the app's dark-slate + emerald look throughout.",
+      cl3_h:"0.5.1",
+      cl3_p:"Installer now defaults to Program Files (admin rights/UAC required at install time only) instead of the per-user AppData folder.",
       faq_h2:"Questions people actually ask",
       faq1_q:"Is my data sent anywhere, to the cloud or to Claude/OpenAI?",
       faq1_a:"No, by default. Everything — window titles, screenshots, OCR text, the pattern database — stays in a local SQLite file on your computer. There is one optional, off-by-default \"AI summary\" feature; if you turn it on and configure an API key yourself, it sends only aggregated numbers (category, app name, minutes, occurrence count) to the endpoint you configured — never screenshots, never raw window titles, never the API key of anyone but you.",
@@ -267,6 +309,8 @@
       faq5_a:"Data older than the retention window you set (30 days by default) is purged automatically, including its screenshots.",
       faq6_q:"How do I uninstall it, and does it clean up fully?",
       faq6_a:"Windows Settings → Apps → AutoProcess Twin → Uninstall. It removes the installed files, shortcuts, and its registry entry; you'll be asked separately whether to also delete your recorded data.",
+      faq7_q:"Does it update itself automatically?",
+      faq7_a:"No — same report-only principle as pattern detection. A few seconds after launch, once per session, the app makes a single check against the project's public GitHub Releases page. If a newer version is tagged there, you get a quiet, dismissible notification linking to the release notes — nothing is downloaded or installed without you clicking through and choosing to. Any network failure is silent and never interrupts the app.",
       privacy_h2:"Privacy, in plain terms",
       privacy_badge:"100% local by default",
       privacy_intro:"AutoProcess Twin observes activity on the computer it's installed on, in order to detect repeated manual work. Here is exactly what that means in practice:",
@@ -278,7 +322,7 @@
       privacy_li6:"Anyone who appears on the recorded user's screen (colleagues, clients, in shared apps) is captured only as part of that screenshot/window-title record — the tool has no separate mechanism for recognizing or tracking third parties, and the same exclusion rules apply.",
       privacy_li7:"Retention is configurable (30 days by default) and enforced automatically — old recordings and their screenshots are deleted, not just hidden.",
       privacy_outro:"This page reflects the tool's actual behavior as implemented, not a legal policy document. Questions: see the contact link below.",
-      footer_privacy:"Privacy", footer_more:"More tools", footer_contact:"Contact",
+      footer_privacy:"Privacy", footer_github:"GitHub", footer_more:"More tools", footer_contact:"Contact",
       footer_copy:"© 2026 Ofir Shudari. All rights reserved.",
       toggle_label:"עברית"
     },
@@ -288,7 +332,7 @@
       hero_tagline:"AutoProcess Twin עוקב בשקט אחרי משימות יומיומיות שחוזרות על עצמן — תיעוד ב-CRM, העברת קבצים, העתק-הדבק — ומראה בדיוק איפה אוטומציה תחסוך זמן אמיתי כל חודש.",
       hero_cta_download:"הורדה ל-Windows — חינם",
       hero_cta_how:"איך זה עובד",
-      hero_version_note:"גרסה 0.5.1 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה",
+      hero_version_note:"גרסה 0.5.2 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה · בודק עדכונים אוטומטית",
       how_h2:"מה זה עושה, ולמה זה קיים",
       how_lead:"רוב העבודה החוזרת אף פעם לא מקבלת אוטומציה כי אין למי שמחליט מספרים אמיתיים על כמה זמן היא באמת עולה. AutoProcess Twin בונה את המספרים האלה אוטומטית: מתעד איזו אפליקציה וכותרת חלון פעילות כל 20 שניות, מקבץ את מה שחוזר לדפוסים, והופך את זה לתמונה חודשית של איפה עבודה ידנית בולעת שעות — כדי שמנהל יוכל להחליט איפה אוטומציה או AI באמת משתלמים, בלי לנחש.",
       how_screenshot:"נכס · צילום מסך של המוצר עדיין לא צולם — כאן יופיע טאב \"פעולות חוזרות\" (רשימת דפוסים, תגי קטגוריה, חצי מגמה) כשיהיה זמין.",
@@ -318,6 +362,8 @@
       faq5_a:"מידע מעבר לחלון השימור שהגדרת (30 יום כברירת מחדל) נמחק אוטומטית, כולל צילומי המסך שלו.",
       faq6_q:"איך מסירים את זה, והאם זה מנקה הכל?",
       faq6_a:"הגדרות Windows ← אפליקציות ← AutoProcess Twin ← הסר. זה מסיר את הקבצים המותקנים, קיצורי הדרך, ורשומת הרישום; תישאל בנפרד אם למחוק גם את הדאטה שנאסף.",
+      faq7_q:"האם היא מתעדכנת אוטומטית?",
+      faq7_a:"לא — אותו עיקרון של דיווח-בלבד כמו זיהוי הדפוסים. כמה שניות אחרי ההפעלה, פעם אחת בכל הפעלה, האפליקציה מבצעת בדיקה אחת מול עמוד ה-GitHub Releases הפומבי של הפרויקט. אם יש שם גרסה חדשה יותר, מוצגת התראה שקטה וניתנת לסגירה עם קישור להערות ה-release — שום דבר לא מוריד או מתקין בלי שתלחצו בעצמכם ותבחרו לעשות זאת. כל תקלת רשת שקטה ואינה מפריעה לאפליקציה.",
       privacy_h2:"פרטיות, בשפה פשוטה",
       privacy_badge:"100% מקומי כברירת מחדל",
       privacy_intro:"AutoProcess Twin צופה בפעילות על המחשב שעליו הוא מותקן, כדי לזהות עבודה ידנית חוזרת. הנה בדיוק מה זה אומר בפועל:",

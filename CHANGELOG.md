@@ -3,6 +3,45 @@
 All notable changes to AutoProcessTwin are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.5.3] - 2026-09-18
+
+Distribution moves to GitHub: the project now has a public repo at
+https://github.com/ofirshudari1-ship-it/autoprocesstwin, which is the
+canonical source and Releases page going forward (installers are published
+there, not just handed off locally).
+
+### Added
+- **Automatic update checking** (`build/app/src/UpdateChecker.cs`, wired into
+  `MainWindow.cs`): on launch, after a 5-second delay and once per session,
+  the app makes a single unauthenticated `GET` to
+  `https://api.github.com/repos/ofirshudari1-ship-it/autoprocesstwin/releases/latest`
+  (with a `User-Agent` header, as GitHub's REST API requires - no token, ever,
+  since the repo is public and this is meant to ship inside the app). The
+  returned `tag_name` is compared against the running version with a small
+  `major.minor.patch` semver check. If a newer release exists, the app shows
+  a non-blocking notification (tray balloon tip + a line in the "עזרה"/Help
+  tab) that opens the GitHub release page on click - it never downloads or
+  installs anything automatically. Any failure (offline, GitHub rate-limited,
+  no releases yet) is swallowed silently; the check never blocks the UI
+  thread and never interrupts the user. Opt-out via a new "בדוק עדכונים
+  אוטומטית" / "Automatically check for updates" checkbox in General Settings
+  (`app.json["check_for_updates"]`, default `true`); a "בדוק עדכונים עכשיו" /
+  "Check for Updates Now" button in the Help tab triggers the same check
+  on demand, bypassing the once-per-session limit.
+- `build/config/app.example.json`: new `check_for_updates` default (`true`).
+
+### Changed
+- Version bumped to 0.5.3 (`version.json`, `MainWindow.AppVersion`,
+  `Setup.cs AppVersion`, `build-installer.cmd` output filename). No
+  installer `.exe` was rebuilt for this release - see RELEASE-CHECKLIST.md
+  for that step.
+- `.gitignore` tightened for the new public repo: generated build output
+  (`build/dist/`), .NET build artifacts (`bin/`, `obj/`, `.vs/`), the
+  root-level `AutoProcessTwin-Setup-*.exe` installers (shipped as GitHub
+  Release assets, never committed), and `build/config/*.json` /
+  `build/reports/*.md`/`.html` (real user config and generated reports,
+  mirroring the existing root-level rules) are now excluded.
+
 ## [0.5.2] - 2026-09-17
 
 Installer visual polish only, following the 0.5.1 Program Files/UAC change -
