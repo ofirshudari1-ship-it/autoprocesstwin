@@ -1,0 +1,37 @@
+{
+  "_comment": "העתק לקובץ guardrails.json. זהו סכימת ה-Guardrail Dashboard מהאפיון (סעיף 5) — מסך הבקרה שמגדיר מה מותר ומה אסור. שלב זה: קונפיג בלבד, נקרא על-ידי briefing.js. שום דבר כאן לא מבצע פעולה אוטונומית עדיין — ראה README פרק 'מה לא בנוי' לפני שמחברים את זה לשליחת מייל/CRM אמיתיים.",
+
+  "profile_id": "ofir-digi-transform",
+
+  "pricing_boundaries": {
+    "max_auto_discount_percent": 5,
+    "max_auto_close_amount_ils": 5000,
+    "currency": "ILS"
+  },
+
+  "decision_rules": [
+    {
+      "id": "vip-no-night-send",
+      "description": "לקוחות VIP — אין לשלוח הודעות אוטומטיות בלילה, רק להכין טיוטה לאישור בבוקר",
+      "condition": "customer.tag == 'VIP'",
+      "action": "draft_only"
+    },
+    {
+      "id": "large-company-flag",
+      "description": "ליד מחברה גדולה — להעביר לסטטוס VIP ב-CRM ולסמן לבדיקה ידנית",
+      "condition": "lead.company_size == 'enterprise'",
+      "action": "flag_for_review"
+    }
+  ],
+
+  "escalation_triggers": [
+    "בקשת פריסת תשלומים חריגה",
+    "הנחה מעל max_auto_discount_percent",
+    "עסקה מעל max_auto_close_amount_ils",
+    "טון הודעה נכנסת שמזוהה כ'כועס' או 'מאיים משפטית'"
+  ],
+
+  "execution_mode_default": "live_assist",
+  "_execution_mode_options": ["manual_trigger", "live_assist", "full_autopilot"],
+  "_note_full_autopilot": "full_autopilot דורש חיבור אמיתי ל-Gmail/CRM עם הרשאות מפורשות, ואינו מחובר בשלב זה. גם כשיחובר, כל פעולה שחורגת מ-escalation_triggers תיעצר לטיוטה, לא תישלח לבד."
+}

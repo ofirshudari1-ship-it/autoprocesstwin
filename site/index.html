@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoProcess Twin — find the hours you lose to repetitive work</title>
+<style>
+  :root{
+    --primary:#6450DC; --primary-dark:#4A38B0;
+    --bg:#12121A; --surface:#1E1E2E; --surface2:#262638;
+    --text:#E8E8F0; --text-muted:#8C82B4;
+    --success:#4CAF7C; --warning:#E8A840; --error:#E05050;
+    --radius:8px; --radius-sm:6px;
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Segoe UI", "Rubik", "Heebo", -apple-system, sans-serif;
+    line-height:1.6;
+  }
+  a{color:var(--primary); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .wrap{max-width:920px; margin:0 auto; padding:0 var(--space-4);}
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:var(--space-4) var(--space-4);
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    position:sticky; top:0; background:rgba(18,18,26,0.92); backdrop-filter:blur(6px); z-index:10;
+  }
+  .brand{display:flex; align-items:center; gap:var(--space-3); font-weight:700; font-size:18px;}
+  .logo-mark{
+    width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:white; flex-shrink:0;
+  }
+  #langToggle{
+    background:var(--surface2); color:var(--text); border:1px solid rgba(255,255,255,0.1);
+    border-radius:var(--radius-sm); padding:8px 14px; font-size:13px; cursor:pointer; min-height:36px;
+  }
+  #langToggle:hover{background:#31314a;}
+  #langToggle:focus-visible{outline:2px solid var(--primary); outline-offset:2px;}
+
+  section{padding:var(--space-8) 0;}
+  .hero{text-align:center; padding-top:var(--space-8); padding-bottom:var(--space-8);}
+  .hero h1{font-size:clamp(28px,5vw,42px); margin:0 0 var(--space-4); font-weight:800;}
+  .hero p.tagline{font-size:18px; color:var(--text-muted); max-width:620px; margin:0 auto var(--space-6);}
+  .cta-row{display:flex; gap:var(--space-3); justify-content:center; flex-wrap:wrap;}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 22px;
+    border-radius:var(--radius-sm); font-weight:600; font-size:15px; cursor:pointer; border:none;
+  }
+  .btn-primary{background:var(--primary); color:white;}
+  .btn-primary:hover{background:var(--primary-dark); text-decoration:none;}
+  .btn-primary:focus-visible{outline:2px solid white; outline-offset:2px;}
+  .btn-ghost{background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.18);}
+  .btn-ghost:hover{background:var(--surface2); text-decoration:none;}
+  .version-note{margin-top:var(--space-3); font-size:12.5px; color:var(--text-muted);}
+
+  h2{font-size:26px; margin:0 0 var(--space-2);}
+  .section-lead{color:var(--text-muted); margin:0 0 var(--space-6); max-width:640px;}
+
+  .screenshot-placeholder{
+    border:1px dashed rgba(255,255,255,0.2); border-radius:var(--radius);
+    background:var(--surface); color:var(--text-muted); text-align:center;
+    padding:var(--space-8) var(--space-4); font-size:14px;
+  }
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:var(--space-4);}
+  .card{
+    background:var(--surface); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius);
+    padding:var(--space-4);
+  }
+  .card h3{margin:0 0 var(--space-2); font-size:16px;}
+  .card p{margin:0; color:var(--text-muted); font-size:14px;}
+
+  .faq details{
+    background:var(--surface); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius);
+    padding:var(--space-3) var(--space-4); margin-bottom:var(--space-2);
+  }
+  .faq summary{cursor:pointer; font-weight:600; outline:none;}
+  .faq summary:focus-visible{outline:2px solid var(--primary); outline-offset:2px;}
+  .faq p{color:var(--text-muted); margin:var(--space-2) 0 0;}
+
+  .privacy-box{
+    background:var(--surface); border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius);
+    padding:var(--space-6);
+  }
+  .privacy-box ul{margin:var(--space-2) 0; padding-inline-start:22px; color:var(--text-muted);}
+  .privacy-box li{margin-bottom:6px;}
+  .badge{display:inline-block; background:rgba(76,175,124,0.15); color:var(--success); border-radius:999px; padding:2px 10px; font-size:12.5px; font-weight:600;}
+
+  footer{border-top:1px solid rgba(255,255,255,0.08); padding:var(--space-6) 0; text-align:center; color:var(--text-muted); font-size:13px;}
+  footer .links{margin-bottom:var(--space-2);}
+  footer .links a{margin:0 8px;}
+
+  [dir="rtl"] .privacy-box ul{padding-inline-start:0; padding-inline-end:22px;}
+  [dir="rtl"] .cta-row{direction:rtl;}
+  .phone-ltr{direction:ltr; unicode-bidi:isolate; display:inline-block;}
+
+  [lang="he"] body, [dir="rtl"]{font-family:"Rubik","Heebo","Segoe UI",sans-serif;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="logo-mark">AT</span>
+    <span data-t="brand_name">AutoProcess Twin</span>
+  </div>
+  <button id="langToggle" type="button" aria-label="Switch language">עברית</button>
+</header>
+
+<main class="wrap">
+
+  <!-- 1. Hero -->
+  <section class="hero">
+    <h1 data-t="hero_h1">Find the hours your team loses to repetitive work</h1>
+    <p class="tagline" data-t="hero_tagline">AutoProcess Twin quietly watches which everyday tasks repeat — CRM entries, file transfers, copy-paste busywork — and shows you exactly where automation would save real time each month.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="../AutoProcessTwin-Setup-0.5.1.exe" data-t="hero_cta_download">Download for Windows — free</a>
+      <a class="btn btn-ghost" href="#how" data-t="hero_cta_how">See how it works</a>
+    </div>
+    <p class="version-note" data-t="hero_version_note">Version 0.5.1 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere</p>
+  </section>
+
+  <!-- 2 & 3. What it does + screenshot -->
+  <section id="how">
+    <h2 data-t="how_h2">What it does, and why it exists</h2>
+    <p class="section-lead" data-t="how_lead">Most repetitive work never gets automated because nobody has hard numbers on how much time it actually costs. AutoProcess Twin builds those numbers automatically: it records which app and window title is active every 20 seconds, groups the recurring ones into patterns, and turns that into a monthly picture of where manual work is eating hours — so a manager can decide where automation or AI actually pays off, instead of guessing.</p>
+    <div class="screenshot-placeholder" data-t="how_screenshot">
+      ASSET · Product screenshot not captured yet — the "Repeated Actions" tab (pattern list, category badges, trend arrows) will go here once available.
+    </div>
+  </section>
+
+  <!-- 4. Key capabilities -->
+  <section>
+    <h2 data-t="features_h2">What's inside</h2>
+    <div class="cards">
+      <div class="card">
+        <h3 data-t="feat1_h">Pattern detection, not raw logging</h3>
+        <p data-t="feat1_p">Groups recurring window activity (same CRM screen, different customer) into named patterns automatically — no manual tagging.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="feat2_h">Automation recommendations, with a confidence score</h3>
+        <p data-t="feat2_p">Each pattern above the noise threshold (20+ minutes, 4+ repeats) gets a plain-language suggestion for where a tool, AI, or automation could take over, plus a 0-100 confidence score (high/medium/low) based on day-coverage and how often it repeats — not an AI/ML guess, just two honest ratios so you know which suggestions to trust first.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="feat3_h">Monthly dashboard, exportable</h3>
+        <p data-t="feat3_p">A local dashboard with a category time-breakdown (CRM, invoicing, support, files, mail, meetings, and more) showing where the hours actually go, trend arrows (up/down/new), and a one-click HTML/CSV report you can send to a manager — no cloud account needed.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="feat4_h">Privacy filter you control</h3>
+        <p data-t="feat4_p">Exclude specific apps or keyword-matched window titles (banking, password managers, specific clients) — enforced before anything is written to disk.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="feat5_h">No autopilot, on purpose</h3>
+        <p data-t="feat5_p">The tool never sends emails, touches your CRM, or takes any action on its own. It only observes and recommends — every action stays with a human.</p>
+      </div>
+      <div class="card">
+        <h3 data-t="feat6_h">Runs entirely on your PC</h3>
+        <p data-t="feat6_p">SQLite database on your machine, no cloud sync, no account. An optional AI summary feature is off by default and only sends aggregated numbers, never screenshots or raw text.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. FAQ -->
+  <section class="faq">
+    <h2 data-t="faq_h2">Questions people actually ask</h2>
+
+    <details>
+      <summary data-t="faq1_q">Is my data sent anywhere, to the cloud or to Claude/OpenAI?</summary>
+      <p data-t="faq1_a">No, by default. Everything — window titles, screenshots, OCR text, the pattern database — stays in a local SQLite file on your computer. There is one optional, off-by-default "AI summary" feature; if you turn it on and configure an API key yourself, it sends only aggregated numbers (category, app name, minutes, occurrence count) to the endpoint you configured — never screenshots, never raw window titles, never the API key of anyone but you.</p>
+    </details>
+
+    <details>
+      <summary data-t="faq2_q">Does it need admin rights to install?</summary>
+      <p data-t="faq2_a">No. It installs to your user profile (<span class="phone-ltr">%LocalAppData%\Programs\AutoProcessTwin</span>) and never touches Program Files or the system-wide registry, so no UAC prompt appears. This is a deliberate choice — the tool needs to observe your own logged-in session, which a per-user install can do without elevation; installing to Program Files would require admin rights for zero added benefit here.</p>
+    </details>
+
+    <details>
+      <summary data-t="faq3_q">Does it record my keystrokes or passwords?</summary>
+      <p data-t="faq3_a">No keystroke logging exists in this tool, by design — that would effectively be a keylogger and isn't needed to see what work repeats. It captures the active window's title and a screenshot on a timer, with a privacy filter you configure to exclude specific apps (like password managers) or keyword-matched titles before anything is saved.</p>
+    </details>
+
+    <details>
+      <summary data-t="faq4_q">Can it act automatically — send emails, update my CRM, close deals?</summary>
+      <p data-t="faq4_a">No. This is intentionally report-only today: it detects patterns and recommends, it never executes anything on its own. An "Autopilot" mode was in the original concept but was deliberately not built, and won't be built to run unsupervised — every action a user takes based on a recommendation stays a manual decision.</p>
+    </details>
+
+    <details>
+      <summary data-t="faq5_q">What happens to old recordings?</summary>
+      <p data-t="faq5_a">Data older than the retention window you set (30 days by default) is purged automatically, including its screenshots.</p>
+    </details>
+
+    <details>
+      <summary data-t="faq6_q">How do I uninstall it, and does it clean up fully?</summary>
+      <p data-t="faq6_a">Windows Settings → Apps → AutoProcess Twin → Uninstall. It removes the installed files, shortcuts, and its registry entry; you'll be asked separately whether to also delete your recorded data.</p>
+    </details>
+  </section>
+
+  <!-- 7. Privacy -->
+  <section id="privacy">
+    <h2 data-t="privacy_h2">Privacy, in plain terms</h2>
+    <div class="privacy-box">
+      <p><span class="badge" data-t="privacy_badge">100% local by default</span></p>
+      <p data-t="privacy_intro">AutoProcess Twin observes activity on the computer it's installed on, in order to detect repeated manual work. Here is exactly what that means in practice:</p>
+      <ul>
+        <li data-t="privacy_li1">Every ~20 seconds, it records the active window's application name and title, and a screenshot of the screen.</li>
+        <li data-t="privacy_li2">A privacy filter (which you configure) excludes specific applications or keyword-matched window titles — for example a password manager, a banking app, or a specific client name — before anything is written to the local database.</li>
+        <li data-t="privacy_li3">Basic redaction attempts to blank out patterns that look like credit-card or national-ID numbers picked up by OCR. This is best-effort, not a guarantee — don't rely on it as your only safeguard for highly sensitive screens; add them to the exclusion list instead.</li>
+        <li data-t="privacy_li4">All data — the SQLite database, screenshots, and generated reports — stays on the local disk. Nothing is uploaded, synced, or sent to any server, by default.</li>
+        <li data-t="privacy_li5">An optional AI-summary feature is off by default. If a user enables it and supplies their own API key, only aggregated numeric data (category, app, minutes, occurrence count, trend) is sent to the endpoint configured — never a screenshot, never raw window-title text, never keystrokes.</li>
+        <li data-t="privacy_li6">Anyone who appears on the recorded user's screen (colleagues, clients, in shared apps) is captured only as part of that screenshot/window-title record — the tool has no separate mechanism for recognizing or tracking third parties, and the same exclusion rules apply.</li>
+        <li data-t="privacy_li7">Retention is configurable (30 days by default) and enforced automatically — old recordings and their screenshots are deleted, not just hidden.</li>
+      </ul>
+      <p data-t="privacy_outro">This page reflects the tool's actual behavior as implemented, not a legal policy document. Questions: see the contact link below.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="links">
+    <a href="#privacy" data-t="footer_privacy">Privacy</a>
+    <a href="https://digi-transform.com" data-t="footer_more">More tools</a>
+    <a href="mailto:ofirshudari1@gmail.com" data-t="footer_contact">Contact</a>
+  </div>
+  <div data-t="footer_copy">© 2026 Ofir Shudari. All rights reserved.</div>
+</footer>
+
+<script>
+(function(){
+  var STR = {
+    en: {
+      brand_name:"AutoProcess Twin",
+      hero_h1:"Find the hours your team loses to repetitive work",
+      hero_tagline:"AutoProcess Twin quietly watches which everyday tasks repeat — CRM entries, file transfers, copy-paste busywork — and shows you exactly where automation would save real time each month.",
+      hero_cta_download:"Download for Windows — free",
+      hero_cta_how:"See how it works",
+      hero_version_note:"Version 0.5.1 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere",
+      how_h2:"What it does, and why it exists",
+      how_lead:"Most repetitive work never gets automated because nobody has hard numbers on how much time it actually costs. AutoProcess Twin builds those numbers automatically: it records which app and window title is active every 20 seconds, groups the recurring ones into patterns, and turns that into a monthly picture of where manual work is eating hours — so a manager can decide where automation or AI actually pays off, instead of guessing.",
+      how_screenshot:"ASSET · Product screenshot not captured yet — the \"Repeated Actions\" tab (pattern list, category badges, trend arrows) will go here once available.",
+      features_h2:"What's inside",
+      feat1_h:"Pattern detection, not raw logging",
+      feat1_p:"Groups recurring window activity (same CRM screen, different customer) into named patterns automatically — no manual tagging.",
+      feat2_h:"Automation recommendations, with a confidence score",
+      feat2_p:"Each pattern above the noise threshold (20+ minutes, 4+ repeats) gets a plain-language suggestion for where a tool, AI, or automation could take over, plus a 0-100 confidence score (high/medium/low) based on day-coverage and how often it repeats — not an AI/ML guess, just two honest ratios so you know which suggestions to trust first.",
+      feat3_h:"Monthly dashboard, exportable",
+      feat3_p:"A local dashboard with a category time-breakdown (CRM, invoicing, support, files, mail, meetings, and more) showing where the hours actually go, trend arrows (up/down/new), and a one-click HTML/CSV report you can send to a manager — no cloud account needed.",
+      feat4_h:"Privacy filter you control",
+      feat4_p:"Exclude specific apps or keyword-matched window titles (banking, password managers, specific clients) — enforced before anything is written to disk.",
+      feat5_h:"No autopilot, on purpose",
+      feat5_p:"The tool never sends emails, touches your CRM, or takes any action on its own. It only observes and recommends — every action stays with a human.",
+      feat6_h:"Runs entirely on your PC",
+      feat6_p:"SQLite database on your machine, no cloud sync, no account. An optional AI summary feature is off by default and only sends aggregated numbers, never screenshots or raw text.",
+      faq_h2:"Questions people actually ask",
+      faq1_q:"Is my data sent anywhere, to the cloud or to Claude/OpenAI?",
+      faq1_a:"No, by default. Everything — window titles, screenshots, OCR text, the pattern database — stays in a local SQLite file on your computer. There is one optional, off-by-default \"AI summary\" feature; if you turn it on and configure an API key yourself, it sends only aggregated numbers (category, app name, minutes, occurrence count) to the endpoint you configured — never screenshots, never raw window titles, never the API key of anyone but you.",
+      faq2_q:"Does it need admin rights to install?",
+      faq2_a:"No. It installs to your user profile (%LocalAppData%\\Programs\\AutoProcessTwin) and never touches Program Files or the system-wide registry, so no UAC prompt appears. This is a deliberate choice — the tool needs to observe your own logged-in session, which a per-user install can do without elevation; installing to Program Files would require admin rights for zero added benefit here.",
+      faq3_q:"Does it record my keystrokes or passwords?",
+      faq3_a:"No keystroke logging exists in this tool, by design — that would effectively be a keylogger and isn't needed to see what work repeats. It captures the active window's title and a screenshot on a timer, with a privacy filter you configure to exclude specific apps (like password managers) or keyword-matched titles before anything is saved.",
+      faq4_q:"Can it act automatically — send emails, update my CRM, close deals?",
+      faq4_a:"No. This is intentionally report-only today: it detects patterns and recommends, it never executes anything on its own. An \"Autopilot\" mode was in the original concept but was deliberately not built, and won't be built to run unsupervised — every action a user takes based on a recommendation stays a manual decision.",
+      faq5_q:"What happens to old recordings?",
+      faq5_a:"Data older than the retention window you set (30 days by default) is purged automatically, including its screenshots.",
+      faq6_q:"How do I uninstall it, and does it clean up fully?",
+      faq6_a:"Windows Settings → Apps → AutoProcess Twin → Uninstall. It removes the installed files, shortcuts, and its registry entry; you'll be asked separately whether to also delete your recorded data.",
+      privacy_h2:"Privacy, in plain terms",
+      privacy_badge:"100% local by default",
+      privacy_intro:"AutoProcess Twin observes activity on the computer it's installed on, in order to detect repeated manual work. Here is exactly what that means in practice:",
+      privacy_li1:"Every ~20 seconds, it records the active window's application name and title, and a screenshot of the screen.",
+      privacy_li2:"A privacy filter (which you configure) excludes specific applications or keyword-matched window titles — for example a password manager, a banking app, or a specific client name — before anything is written to the local database.",
+      privacy_li3:"Basic redaction attempts to blank out patterns that look like credit-card or national-ID numbers picked up by OCR. This is best-effort, not a guarantee — don't rely on it as your only safeguard for highly sensitive screens; add them to the exclusion list instead.",
+      privacy_li4:"All data — the SQLite database, screenshots, and generated reports — stays on the local disk. Nothing is uploaded, synced, or sent to any server, by default.",
+      privacy_li5:"An optional AI-summary feature is off by default. If a user enables it and supplies their own API key, only aggregated numeric data (category, app, minutes, occurrence count, trend) is sent to the endpoint configured — never a screenshot, never raw window-title text, never keystrokes.",
+      privacy_li6:"Anyone who appears on the recorded user's screen (colleagues, clients, in shared apps) is captured only as part of that screenshot/window-title record — the tool has no separate mechanism for recognizing or tracking third parties, and the same exclusion rules apply.",
+      privacy_li7:"Retention is configurable (30 days by default) and enforced automatically — old recordings and their screenshots are deleted, not just hidden.",
+      privacy_outro:"This page reflects the tool's actual behavior as implemented, not a legal policy document. Questions: see the contact link below.",
+      footer_privacy:"Privacy", footer_more:"More tools", footer_contact:"Contact",
+      footer_copy:"© 2026 Ofir Shudari. All rights reserved.",
+      toggle_label:"עברית"
+    },
+    he: {
+      brand_name:"AutoProcess Twin",
+      hero_h1:"תגלו איפה הצוות שלכם מבזבז שעות על עבודה חוזרת",
+      hero_tagline:"AutoProcess Twin עוקב בשקט אחרי משימות יומיומיות שחוזרות על עצמן — תיעוד ב-CRM, העברת קבצים, העתק-הדבק — ומראה בדיוק איפה אוטומציה תחסוך זמן אמיתי כל חודש.",
+      hero_cta_download:"הורדה ל-Windows — חינם",
+      hero_cta_how:"איך זה עובד",
+      hero_version_note:"גרסה 0.5.1 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה",
+      how_h2:"מה זה עושה, ולמה זה קיים",
+      how_lead:"רוב העבודה החוזרת אף פעם לא מקבלת אוטומציה כי אין למי שמחליט מספרים אמיתיים על כמה זמן היא באמת עולה. AutoProcess Twin בונה את המספרים האלה אוטומטית: מתעד איזו אפליקציה וכותרת חלון פעילות כל 20 שניות, מקבץ את מה שחוזר לדפוסים, והופך את זה לתמונה חודשית של איפה עבודה ידנית בולעת שעות — כדי שמנהל יוכל להחליט איפה אוטומציה או AI באמת משתלמים, בלי לנחש.",
+      how_screenshot:"נכס · צילום מסך של המוצר עדיין לא צולם — כאן יופיע טאב \"פעולות חוזרות\" (רשימת דפוסים, תגי קטגוריה, חצי מגמה) כשיהיה זמין.",
+      features_h2:"מה יש בפנים",
+      feat1_h:"זיהוי דפוסים, לא לוג גולמי",
+      feat1_p:"מקבץ פעילות חלונות חוזרת (אותו מסך CRM, לקוח אחר) לדפוסים בעלי שם אוטומטית — בלי תיוג ידני.",
+      feat2_h:"המלצות אוטומציה, עם ציון ביטחון",
+      feat2_p:"כל דפוס שחוצה סף רעש (20+ דקות, 4+ חזרות) מקבל הצעה בשפה פשוטה איפה כלי, AI או אוטומציה יכולים לקחת את המשימה, בתוספת ציון ביטחון 0-100 (גבוה/בינוני/נמוך) המבוסס על כיסוי-ימים ותדירות החזרה — לא ניחוש AI, רק שני יחסים כנים שעוזרים לדעת באילו המלצות להתחיל.",
+      feat3_h:"דשבורד חודשי, ניתן לייצוא",
+      feat3_p:"דשבורד מקומי עם פילוח זמן לפי קטגוריה (CRM, חשבוניות, תמיכה, קבצים, מייל, פגישות ועוד) שמראה לאן הזמן באמת הולך, חצי מגמה (עלייה/ירידה/חדש) ודוח HTML/CSV בלחיצה אחת שאפשר לשלוח למנהל — בלי חשבון ענן.",
+      feat4_h:"פילטר פרטיות בשליטתך",
+      feat4_p:"החרג אפליקציות ספציפיות או כותרות חלון לפי מילת מפתח (בנקאות, מנהלי סיסמאות, לקוחות ספציפיים) — נאכף לפני שכל דבר נכתב לדיסק.",
+      feat5_h:"בלי Autopilot, בכוונה",
+      feat5_p:"הכלי אף פעם לא שולח מיילים, נוגע ב-CRM שלך, או מבצע כל פעולה לבד. הוא רק צופה וממליץ — כל פעולה נשארת בידי בן אדם.",
+      feat6_h:"רץ לגמרי על המחשב שלך",
+      feat6_p:"מסד נתונים SQLite על המחשב שלך, בלי סנכרון ענן, בלי חשבון. פיצ'ר סיכום AI אופציונלי כבוי כברירת מחדל ושולח רק מספרים מצטברים, אף פעם לא צילומי מסך או טקסט גולמי.",
+      faq_h2:"שאלות שאנשים באמת שואלים",
+      faq1_q:"האם המידע שלי נשלח לאיפשהו, לענן או ל-Claude/OpenAI?",
+      faq1_a:"לא, כברירת מחדל. הכל — כותרות חלונות, צילומי מסך, טקסט OCR, מסד הדפוסים — נשאר בקובץ SQLite מקומי על המחשב שלך. יש פיצ'ר אחד אופציונלי, כבוי כברירת מחדל, \"סיכום AI\"; אם מפעילים אותו ומגדירים מפתח API בעצמך, נשלחים רק מספרים מצטברים (קטגוריה, שם אפליקציה, דקות, מספר חזרות) לכתובת שהגדרת — אף פעם לא צילומי מסך, אף פעם לא כותרות חלון גולמיות, אף פעם לא מפתח ה-API של אף אחד חוץ ממך.",
+      faq2_q:"האם צריך הרשאות מנהל בשביל ההתקנה?",
+      faq2_a:"לא. ההתקנה היא לתוך פרופיל המשתמש שלך (%LocalAppData%\\Programs\\AutoProcessTwin) ואף פעם לא נוגעת ב-Program Files או ברישום המערכתי הגלובלי, כך שלא מופיע חלון UAC. זו בחירה מכוונת — הכלי צריך לצפות בסשן ההתקנה האישי שלך, מה שהתקנה per-user יכולה לעשות בלי הרשאות מנהל; התקנה ל-Program Files הייתה דורשת הרשאות מנהל בלי שום תועלת נוספת כאן.",
+      faq3_q:"האם זה מקליט הקשות מקלדת או סיסמאות?",
+      faq3_a:"אין הקלטת הקשות מקלדת בכלי הזה, בכוונה — זה בפועל keylogger ולא נחוץ כדי לראות אילו עבודות חוזרות. הוא מתעד את כותרת החלון הפעיל וצילום מסך בטיימר, עם פילטר פרטיות שאתה מגדיר כדי להחריג אפליקציות ספציפיות (כמו מנהלי סיסמאות) או כותרות לפי מילת מפתח לפני ששומרים משהו.",
+      faq4_q:"האם זה יכול לפעול אוטומטית — לשלוח מיילים, לעדכן CRM, לסגור עסקאות?",
+      faq4_a:"לא. זה בכוונה report-only כרגע: מזהה דפוסים וממליץ, אף פעם לא מבצע כלום לבד. מצב \"Autopilot\" היה בקונספט המקורי אבל בכוונה לא נבנה, ולא ייבנה לרוץ בלי פיקוח — כל פעולה שמשתמש עושה בעקבות המלצה נשארת החלטה ידנית.",
+      faq5_q:"מה קורה להקלטות ישנות?",
+      faq5_a:"מידע מעבר לחלון השימור שהגדרת (30 יום כברירת מחדל) נמחק אוטומטית, כולל צילומי המסך שלו.",
+      faq6_q:"איך מסירים את זה, והאם זה מנקה הכל?",
+      faq6_a:"הגדרות Windows ← אפליקציות ← AutoProcess Twin ← הסר. זה מסיר את הקבצים המותקנים, קיצורי הדרך, ורשומת הרישום; תישאל בנפרד אם למחוק גם את הדאטה שנאסף.",
+      privacy_h2:"פרטיות, בשפה פשוטה",
+      privacy_badge:"100% מקומי כברירת מחדל",
+      privacy_intro:"AutoProcess Twin צופה בפעילות על המחשב שעליו הוא מותקן, כדי לזהות עבודה ידנית חוזרת. הנה בדיוק מה זה אומר בפועל:",
+      privacy_li1:"כל כ-20 שניות, הוא מתעד את שם האפליקציה וכותרת החלון הפעיל, וצילום מסך.",
+      privacy_li2:"פילטר פרטיות (שאתה מגדיר) מחריג אפליקציות ספציפיות או כותרות חלון לפי מילת מפתח — לדוגמה מנהל סיסמאות, אפליקציית בנקאות, או שם לקוח ספציפי — לפני שכל דבר נכתב למסד הנתונים המקומי.",
+      privacy_li3:"רדקציה בסיסית מנסה לטשטש דפוסים שנראים כמו מספרי כרטיס אשראי או תעודת זהות שנתפסו ב-OCR. זה best-effort, לא הבטחה — אל תסתמך על זה כהגנה היחידה למסכים רגישים במיוחד; במקום זה, הוסף אותם לרשימת ההחרגה.",
+      privacy_li4:"כל המידע — מסד ה-SQLite, צילומי המסך, והדוחות שנוצרים — נשאר על הדיסק המקומי. שום דבר לא מועלה, מסונכרן, או נשלח לשום שרת, כברירת מחדל.",
+      privacy_li5:"פיצ'ר סיכום AI אופציונלי כבוי כברירת מחדל. אם משתמש מפעיל אותו ומספק מפתח API משלו, נשלח רק מידע מספרי מצטבר (קטגוריה, אפליקציה, דקות, מספר חזרות, מגמה) לכתובת שהוגדרה — אף פעם לא צילום מסך, אף פעם לא טקסט כותרת חלון גולמי, אף פעם לא הקשות מקלדת.",
+      privacy_li6:"כל מי שמופיע על המסך של המשתמש המוקלט (עמיתים, לקוחות, באפליקציות משותפות) נלכד רק כחלק מרשומת צילום המסך/כותרת החלון — לכלי אין מנגנון נפרד לזיהוי או מעקב אחרי צדדים שלישיים, ואותם כללי החרגה חלים.",
+      privacy_li7:"תקופת השימור ניתנת להגדרה (30 יום כברירת מחדל) ונאכפת אוטומטית — הקלטות ישנות וצילומי המסך שלהן נמחקים, לא רק מוסתרים.",
+      privacy_outro:"עמוד זה משקף את ההתנהגות בפועל של הכלי כפי שמומש, לא מסמך מדיניות משפטי. שאלות: ראו קישור יצירת הקשר למטה.",
+      footer_privacy:"פרטיות", footer_more:"עוד כלים", footer_contact:"צור קשר",
+      footer_copy:"© 2026 אופיר שודרי. כל הזכויות שמורות.",
+      toggle_label:"English"
+    }
+  };
+
+  function applyLang(lang){
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
+    var dict = STR[lang];
+    document.querySelectorAll("[data-t]").forEach(function(el){
+      var key = el.getAttribute("data-t");
+      if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    document.getElementById("langToggle").textContent = dict.toggle_label;
+    try { localStorage.setItem("apt_site_lang", lang); } catch(e){}
+  }
+
+  var initial = "en";
+  try {
+    var saved = localStorage.getItem("apt_site_lang");
+    if (saved === "he" || saved === "en") initial = saved;
+  } catch(e){}
+
+  applyLang(initial);
+
+  document.getElementById("langToggle").addEventListener("click", function(){
+    var next = document.documentElement.lang === "he" ? "en" : "he";
+    applyLang(next);
+  });
+})();
+</script>
+
+</body>
+</html>

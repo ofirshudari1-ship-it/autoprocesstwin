@@ -1,0 +1,14 @@
+{
+  "name": "autoprocess-twin-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phase 1: local activity recorder + privacy filter + morning briefing for AutoProcess Twin",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "briefing": "node src/briefing.js"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1"
+  }
+}

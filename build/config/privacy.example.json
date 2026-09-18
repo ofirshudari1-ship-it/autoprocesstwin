@@ -1,0 +1,29 @@
+{
+  "_comment": "העתק לקובץ privacy.json באותה תיקייה כדי להפעיל. כל שורה כאן מוחרגת מצילום מסך וממעקב — הסוכן רק רושם 'app_name' ו-'filtered:true', בלי תוכן.",
+
+  "excluded_apps": [
+    "1password",
+    "lastpass",
+    "bitwarden",
+    "keepass",
+    "bank",
+    "paypal",
+    "wallet"
+  ],
+
+  "excluded_title_keywords": [
+    "בנק",
+    "אשראי",
+    "סיסמה",
+    "password",
+    "otp",
+    "אימות דו-שלבי"
+  ],
+
+  "capture_interval_ms": 20000,
+
+  "screenshot_enabled": true,
+  "ocr_enabled": true,
+
+  "retention_days": 30
+}

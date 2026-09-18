@@ -1,0 +1,30 @@
+config/*.json
+!config/*.example.json
+data/
+reports/*.md
+build/reports/*.md
+build/reports/*.html
+node_modules/
+*.log
+
+# Same real-config-vs-example-template rule, but for build/config/ too
+# (git's non-** "dir/*.json" pattern only matches at the .gitignore's own
+# level, not nested dirs — this repo has real config under build/config/).
+build/config/*.json
+!build/config/*.example.json
+
+# Generated build output (packaged app copy) — not source, rebuilt each release.
+build/dist/
+
+# .NET build artifacts (build/app, build/installer, build/app/tools)
+bin/
+obj/
+.vs/
+
+# Release installers — shipped as GitHub Release assets, not committed to git.
+AutoProcessTwin-Setup-*.exe
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store

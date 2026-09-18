@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Reconstructed project file for the custom installer (Setup.cs, namespace
+       AutoProcessTwinSetup) — a separate program with its own Main(). -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Setup-AutoProcessTwin</AssemblyName>
+    <RootNamespace>AutoProcessTwinSetup</RootNamespace>
+    <ApplicationIcon>..\app\AppIcon.ico</ApplicationIcon>
+    <Product>AutoProcessTwin Setup</Product>
+    <Company>AutoProcessTwin</Company>
+    <AssemblyTitle>AutoProcessTwin Setup</AssemblyTitle>
+    <Description>Installer for AutoProcessTwin.</Description>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ZipArchive/ZipArchiveEntry (used to unpack a bundled payload during setup). -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+</Project>
