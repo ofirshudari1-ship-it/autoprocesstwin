@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -16,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.3";
+        public const string AppVersion = "0.5.4";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();
@@ -73,6 +75,15 @@ namespace AutoProcessTwin
         private CheckBox _startWithWindowsBox, _autoRecordBox;
         private Dictionary<string, object> _appConfig;
 
+        // Windows integration extras (0.5.4): start-minimized + global hotkey (§12.4)
+        private CheckBox _startMinimizedBox;
+        private CheckBox _hotkeyEnabledBox;
+        private ComboBox _hotkeyModifierCombo, _hotkeyKeyCombo;
+        private const int HotkeyId = 0xA1F0;
+        private const uint ModAlt = 0x1, ModControl = 0x2, ModShift = 0x4, ModNoRepeat = 0x4000;
+        private const int WmHotkey = 0x0312;
+        private bool _hotkeyRegistered;
+
         // בדיקת עדכונים (0.5.3) - opt-out checkbox + תצוגת סטטוס בטאב עזרה.
         // ר' UpdateChecker.cs לחוזה ההתנהגות המלא (GET לא-מאומת, שקט לגמרי
         // בכשל, פעם אחת לכל הרצה, מושהה כדי לא להתחרות ב-startup).
@@ -83,8 +94,13 @@ namespace AutoProcessTwin
 
         // Tray (§12.1, §12.2 STANDARDS)
         private System.Windows.Forms.NotifyIcon _tray;
+        private System.Drawing.Icon _trayIconIdle, _trayIconRecording;
+        private System.Windows.Forms.ToolStripMenuItem _trayRecItem;
         private bool _firstTrayHide = true;
         private bool _exitRequested = false;
+
+        [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+        [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
         // AI (אופציונלי, כבוי כברירת מחדל - ראה BuildAiSettingsTab)
         private CheckBox _aiEnabledBox;
@@ -173,12 +189,25 @@ namespace AutoProcessTwin
             RestoreWindowState();
             Closing += OnWindowClosing;
 
+            // Global hotkey (§12.4) - needs the real HWND, only available once the
+            // window handle exists. Never hardcoded: only registers what the user
+            // configured in Settings, and only if they explicitly enabled it.
+            SourceInitialized += (s, e) => ApplyHotkeySettings();
+
             Loaded += (s, e) =>
             {
+                bool needsOnboarding = !System.IO.File.Exists(AppPaths.OnboardingMarkerPath);
                 MaybeShowOnboarding();
                 if (Json.GetBool(_appConfig, "auto_record", false) && !_recorder.IsRunning)
                     ToggleRecording();
                 MaybeCheckForUpdates();
+
+                // "Start minimized" (Windows-integration option, §12.1 explicitly
+                // allows this only when the USER opted in - never as the implicit
+                // remembered state from a previous tray-close). Skipped on first run
+                // so onboarding is never hidden from a first-time user.
+                if (!needsOnboarding && Json.GetBool(_appConfig, "start_minimized", false))
+                    Hide();
             };
         }
 
@@ -294,9 +323,12 @@ namespace AutoProcessTwin
                     try { icon = new System.Drawing.Icon(iconPath); } catch { }
                 }
 
+                _trayIconIdle = icon;
+                _trayIconRecording = BuildRecordingOverlayIcon(icon);
+
                 _tray = new System.Windows.Forms.NotifyIcon
                 {
-                    Icon = icon,
+                    Icon = _trayIconIdle,
                     Text = Strings.TrayTooltip,
                     Visible = true,
                 };
@@ -317,7 +349,7 @@ namespace AutoProcessTwin
                     ShowFromTray();
                     ToggleRecording();
                 };
-                _recorder.Stopped += (exitCode) => UpdateTray(recItem);
+                _trayRecItem = recItem;
                 menu.Opening += (s, e) =>
                 {
                     recItem.Text = _recorder.IsRunning ? Strings.TrayMenuStopRec : Strings.TrayMenuStartRec;
@@ -336,15 +368,43 @@ namespace AutoProcessTwin
             catch { }
         }
 
-        private void UpdateTray(System.Windows.Forms.ToolStripMenuItem recItem)
+        // §12.2 - tray icon itself (not just tooltip/balloon) reflects recording
+        // state via an overlay dot, same idea already used for the floating HUD.
+        private static System.Drawing.Icon BuildRecordingOverlayIcon(System.Drawing.Icon baseIcon)
+        {
+            try
+            {
+                using (var bmp = baseIcon.ToBitmap())
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    int d = Math.Max(6, bmp.Width / 3);
+                    var rect = new System.Drawing.Rectangle(bmp.Width - d - 1, bmp.Height - d - 1, d, d);
+                    using (var brush = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(255, 220, 30, 30)))
+                        g.FillEllipse(brush, rect);
+                    using (var pen = new System.Drawing.Pen(System.Drawing.Color.White, 1))
+                        g.DrawEllipse(pen, rect);
+                    return System.Drawing.Icon.FromHandle(bmp.GetHicon());
+                }
+            }
+            catch { return baseIcon; }
+        }
+
+        // Updates icon + tooltip + menu text together - called whenever recording
+        // state changes (ToggleRecording, recorder-stopped) so the tray icon
+        // itself always reflects live state, not only the tooltip.
+        private void UpdateTray()
         {
             try
             {
                 Dispatcher.Invoke(new Action(() =>
                 {
                     if (_tray == null) return;
-                    _tray.Text = _recorder.IsRunning ? Strings.TrayTooltipRecording : Strings.TrayTooltip;
-                    recItem.Text = _recorder.IsRunning ? Strings.TrayMenuStopRec : Strings.TrayMenuStartRec;
+                    bool running = _recorder.IsRunning;
+                    _tray.Icon = running ? (_trayIconRecording ?? _trayIconIdle) : _trayIconIdle;
+                    _tray.Text = running ? Strings.TrayTooltipRecording : Strings.TrayTooltip;
+                    if (_trayRecItem != null)
+                        _trayRecItem.Text = running ? Strings.TrayMenuStopRec : Strings.TrayMenuStartRec;
                 }));
             }
             catch { }
@@ -363,8 +423,13 @@ namespace AutoProcessTwin
             if (_recorder.IsRunning) _recorder.Stop();
             _statusAutoRefreshTimer.Stop();
             _patternsAutoRefreshTimer.Stop();
+            UnregisterHotkey();
             if (_tray != null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
             Close();
+            // Safety net so real exit always ends the process even if some
+            // future code path changes ShutdownMode or the window is hidden
+            // (not just Closed) when this runs.
+            try { Application.Current.Shutdown(); } catch { }
         }
 
         // §12.1 — X minimizes to tray; exit only via tray menu
@@ -567,6 +632,7 @@ namespace AutoProcessTwin
             _toggleButton.Style = (Style)Theme.GetStyle(running ? "DangerButtonStyle" : "AccentButtonStyle");
             _statusDot.Background = Theme.Get(running ? "AccentBrush" : "TextMutedBrush");
             _statusText.Text = running ? "מקליט..." : "לא פעיל";
+            UpdateTray();
         }
 
         private void OnRecorderOutput(string line)
@@ -722,11 +788,31 @@ namespace AutoProcessTwin
             _startWithWindowsBox = new CheckBox { Content = Strings.LabelStartup };
             stack.Children.Add(MakeCheckRow(_startWithWindowsBox, Strings.StartupDesc));
 
+            _startMinimizedBox = new CheckBox { Content = Strings.LabelStartMinimized };
+            stack.Children.Add(MakeCheckRow(_startMinimizedBox, Strings.StartMinimizedDesc));
+
             _autoRecordBox = new CheckBox { Content = Strings.LabelAutoRecord };
             stack.Children.Add(MakeCheckRow(_autoRecordBox, Strings.AutoRecordDesc));
 
             _checkUpdatesBox = new CheckBox { Content = Strings.LabelCheckUpdates };
             stack.Children.Add(MakeCheckRow(_checkUpdatesBox, Strings.CheckUpdatesDesc));
+
+            stack.Children.Add(MakeSettingsDivider());
+
+            // ── Section: Global Shortcut (§12.4 - always user-configurable, never hardcoded) ──
+            stack.Children.Add(MakeSectionHeader(Strings.SectionHotkey));
+
+            _hotkeyEnabledBox = new CheckBox { Content = Strings.LabelHotkeyEnable };
+            stack.Children.Add(MakeCheckRow(_hotkeyEnabledBox, Strings.HotkeyEnableDesc));
+
+            _hotkeyModifierCombo = new ComboBox { Width = 200, Style = (Style)Theme.GetStyle("ModernComboStyle") };
+            foreach (var m in new[] { "Ctrl+Alt", "Ctrl+Shift", "Alt+Shift", "Ctrl+Alt+Shift" })
+                _hotkeyModifierCombo.Items.Add(m);
+            stack.Children.Add(MakeComboRow(Strings.LabelHotkeyModifier, _hotkeyModifierCombo));
+
+            _hotkeyKeyCombo = new ComboBox { Width = 200, Style = (Style)Theme.GetStyle("ModernComboStyle") };
+            for (char c = 'A'; c <= 'Z'; c++) _hotkeyKeyCombo.Items.Add(c.ToString());
+            stack.Children.Add(MakeComboRow(Strings.LabelHotkeyKey, _hotkeyKeyCombo));
 
             // Save button
             var saveBtn = new Button
@@ -793,15 +879,43 @@ namespace AutoProcessTwin
             if (_languageCombo == null || _themeCombo == null || _startWithWindowsBox == null) return;
             var lang = Json.GetString(_appConfig, "language", "he");
             var theme = Json.GetString(_appConfig, "theme", "dark");
-            var startup = Json.GetBool(_appConfig, "start_with_windows", false);
+
+            // §12: don't just trust the stored flag - read the actual registry
+            // value back so the checkbox reflects reality even if the user
+            // removed the entry outside the app (Task Manager "Startup" tab,
+            // manual regedit, etc.) or the install path moved.
+            bool regStartup = GetStartWithWindows();
+            bool cfgStartup = Json.GetBool(_appConfig, "start_with_windows", false);
+            if (regStartup != cfgStartup)
+            {
+                _appConfig["start_with_windows"] = regStartup;
+                try { ConfigStore.SaveApp(_appConfig); } catch { }
+            }
+
+            var startMinimized = Json.GetBool(_appConfig, "start_minimized", false);
             var autoRecord = Json.GetBool(_appConfig, "auto_record", false);
             var checkUpdates = Json.GetBool(_appConfig, "check_for_updates", true);
+            var hotkeyEnabled = Json.GetBool(_appConfig, "hotkey_enabled", false);
+            var hotkeyMod = Json.GetString(_appConfig, "hotkey_modifiers", "Ctrl+Alt");
+            var hotkeyKey = Json.GetString(_appConfig, "hotkey_key", "R");
 
             _languageCombo.SelectedIndex = lang == "en" ? 1 : 0;
             _themeCombo.SelectedIndex = theme == "light" ? 1 : 0;
-            _startWithWindowsBox.IsChecked = startup;
+            _startWithWindowsBox.IsChecked = regStartup;
+            if (_startMinimizedBox != null) _startMinimizedBox.IsChecked = startMinimized;
             if (_autoRecordBox != null) _autoRecordBox.IsChecked = autoRecord;
             if (_checkUpdatesBox != null) _checkUpdatesBox.IsChecked = checkUpdates;
+            if (_hotkeyEnabledBox != null) _hotkeyEnabledBox.IsChecked = hotkeyEnabled;
+            if (_hotkeyModifierCombo != null)
+            {
+                int idx = _hotkeyModifierCombo.Items.IndexOf(hotkeyMod);
+                _hotkeyModifierCombo.SelectedIndex = idx >= 0 ? idx : 0;
+            }
+            if (_hotkeyKeyCombo != null)
+            {
+                int idx = _hotkeyKeyCombo.Items.IndexOf(hotkeyKey);
+                _hotkeyKeyCombo.SelectedIndex = idx >= 0 ? idx : ("R"[0] - 'A');
+            }
         }
 
         private void SaveGeneralSettings()
@@ -809,43 +923,172 @@ namespace AutoProcessTwin
             var lang = _languageCombo.SelectedIndex == 1 ? "en" : "he";
             var theme = _themeCombo.SelectedIndex == 1 ? "light" : "dark";
             var startup = _startWithWindowsBox.IsChecked == true;
+            var startMinimized = _startMinimizedBox != null && _startMinimizedBox.IsChecked == true;
             var autoRecord = _autoRecordBox != null && _autoRecordBox.IsChecked == true;
             var checkUpdates = _checkUpdatesBox == null || _checkUpdatesBox.IsChecked == true;
+            var hotkeyEnabled = _hotkeyEnabledBox != null && _hotkeyEnabledBox.IsChecked == true;
+            var hotkeyMod = _hotkeyModifierCombo != null && _hotkeyModifierCombo.SelectedItem != null
+                ? _hotkeyModifierCombo.SelectedItem.ToString() : "Ctrl+Alt";
+            var hotkeyKey = _hotkeyKeyCombo != null && _hotkeyKeyCombo.SelectedItem != null
+                ? _hotkeyKeyCombo.SelectedItem.ToString() : "R";
 
             _appConfig["language"] = lang;
             _appConfig["theme"] = theme;
             _appConfig["start_with_windows"] = startup;
+            _appConfig["start_minimized"] = startMinimized;
             _appConfig["auto_record"] = autoRecord;
             _appConfig["check_for_updates"] = checkUpdates;
+            _appConfig["hotkey_enabled"] = hotkeyEnabled;
+            _appConfig["hotkey_modifiers"] = hotkeyMod;
+            _appConfig["hotkey_key"] = hotkeyKey;
             ConfigStore.SaveApp(_appConfig);
 
-            SetStartWithWindows(startup);
+            bool regOk = SetStartWithWindows(startup);
+            ApplyHotkeySettings();
+
+            if (!regOk)
+            {
+                MessageBox.Show(Strings.MsgStartupRegFailed, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else if (hotkeyEnabled && !_hotkeyRegistered)
+            {
+                MessageBox.Show(Strings.MsgHotkeyConflict, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else if (hotkeyEnabled && IsLikelyReservedHotkey(hotkeyMod, hotkeyKey))
+            {
+                MessageBox.Show(Strings.MsgHotkeyLikelyTaken, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
 
             MessageBox.Show(Strings.MsgRestartNeeded, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private static void SetStartWithWindows(bool enable)
+        // §12.4 - a small, honest list of combos that commonly collide with
+        // Windows itself or with apps this product's users are likely to also
+        // run (OBS, Discord/Teams, browsers). Not exhaustive - real conflicts
+        // with anything else are still caught by RegisterHotKey failing below.
+        private static bool IsLikelyReservedHotkey(string modifiers, string key)
         {
-            const string keyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
-            const string valueName = "AutoProcessTwin";
+            var combos = new[]
+            {
+                "Ctrl+Shift+Esc", "Ctrl+Shift+M", "Ctrl+Shift+O", "Ctrl+Shift+N",
+                "Ctrl+Shift+B", "Ctrl+Alt+T", "Ctrl+Shift+Space",
+            };
+            string combo = modifiers + "+" + key;
+            foreach (var c in combos)
+                if (string.Equals(c, combo, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        // §12.4 - reads/writes the hotkey the user configured (never hardcoded).
+        private void ApplyHotkeySettings()
+        {
+            UnregisterHotkey();
+            if (!Json.GetBool(_appConfig, "hotkey_enabled", false)) return;
+
+            string modStr = Json.GetString(_appConfig, "hotkey_modifiers", "Ctrl+Alt");
+            string keyStr = Json.GetString(_appConfig, "hotkey_key", "R");
+            if (string.IsNullOrEmpty(keyStr)) return;
+
+            System.Windows.Forms.Keys vk;
+            if (!Enum.TryParse(keyStr, true, out vk)) return;
+
+            uint mods = ParseHotkeyModifiers(modStr) | ModNoRepeat;
             try
             {
-                using (var key = Registry.CurrentUser.OpenSubKey(keyPath, true))
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero) return;
+                _hotkeyRegistered = RegisterHotKey(hwnd, HotkeyId, mods, (uint)vk);
+            }
+            catch { _hotkeyRegistered = false; }
+        }
+
+        private void UnregisterHotkey()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd != IntPtr.Zero) UnregisterHotKey(hwnd, HotkeyId);
+            }
+            catch { }
+            _hotkeyRegistered = false;
+        }
+
+        private static uint ParseHotkeyModifiers(string s)
+        {
+            uint m = 0;
+            if (s.IndexOf("Ctrl", StringComparison.OrdinalIgnoreCase) >= 0) m |= ModControl;
+            if (s.IndexOf("Alt", StringComparison.OrdinalIgnoreCase) >= 0) m |= ModAlt;
+            if (s.IndexOf("Shift", StringComparison.OrdinalIgnoreCase) >= 0) m |= ModShift;
+            return m;
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var src = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            if (src != null) src.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
+            {
+                ToggleRecording();
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private const string StartupKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+        private const string StartupValueName = "AutoProcessTwin";
+
+        // Writes the Run key, then reads it back to confirm the write actually
+        // took (not just trusted). Returns false if the registry doesn't end up
+        // matching what we asked for (e.g. blocked by policy/AV), so the caller
+        // can warn the user instead of silently claiming success.
+        private static bool SetStartWithWindows(bool enable)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.CreateSubKey(StartupKeyPath))
                 {
-                    if (key == null) return;
+                    if (key == null) return false;
                     if (enable)
                     {
                         string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                        key.SetValue(valueName, "\"" + exePath + "\"");
+                        key.SetValue(StartupValueName, "\"" + exePath + "\"");
                     }
                     else
                     {
-                        if (key.GetValue(valueName) != null)
-                            key.DeleteValue(valueName);
+                        if (key.GetValue(StartupValueName) != null)
+                            key.DeleteValue(StartupValueName);
                     }
                 }
             }
-            catch { }
+            catch { return false; }
+
+            return GetStartWithWindows() == enable;
+        }
+
+        // Reads the ACTUAL registry state - used to populate the checkbox so it
+        // never just echoes a stored config flag that may have drifted from
+        // reality (user removed it via Task Manager > Startup, moved the
+        // install, etc.).
+        private static bool GetStartWithWindows()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(StartupKeyPath, false))
+                {
+                    if (key == null) return false;
+                    var val = key.GetValue(StartupValueName) as string;
+                    if (string.IsNullOrEmpty(val)) return false;
+                    string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    string expected = "\"" + exePath + "\"";
+                    return string.Equals(val.Trim(), expected, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch { return false; }
         }
 
         // ---------- Dashboard ----------

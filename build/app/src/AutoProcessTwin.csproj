@@ -4,13 +4,17 @@
     Reconstructed project file — none existed before. Framework target and references
     were derived from the actual `using` statements in this folder: System.Web.Script.
     Serialization (JavaScriptSerializer) only exists in classic .NET Framework, so this
-    stays net48, not net8.0. WPF only (no WinForms) in this component.
+    stays net48, not net8.0. Needs both WPF (main window/UI) and WinForms
+    (NotifyIcon/ContextMenuStrip for the system tray icon).
   -->
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Tray icon (NotifyIcon/ContextMenuStrip in MainWindow.cs) needs WinForms
+         alongside WPF - the old comment above claiming "WPF only" was stale. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <AssemblyName>AutoProcessTwin</AssemblyName>
     <RootNamespace>AutoProcessTwin</RootNamespace>

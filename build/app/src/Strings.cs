@@ -55,6 +55,18 @@ namespace AutoProcessTwin
         public static string LabelCheckUpdates      { get { return IsHe ? "בדוק עדכונים אוטומטית" : "Automatically check for updates"; } }
         public static string CheckUpdatesDesc       { get { return IsHe ? "בדיקה שקטה מול GitHub בכל הפעלה; לא מוריד ולא מתקין כלום לבד - רק מודיע" : "A quiet check against GitHub on each launch; never downloads or installs anything on its own - only notifies"; } }
         public static string BtnCheckForUpdates     { get { return IsHe ? "בדוק עדכונים עכשיו" : "Check for Updates Now"; } }
+        public static string LabelStartMinimized    { get { return IsHe ? "התחל ממוזער למגש" : "Start minimized to tray"; } }
+        public static string StartMinimizedDesc     { get { return IsHe ? "האפליקציה תיפתח ישר למגש המערכת, בלי להציג חלון (לא חל על ריצה ראשונה)" : "The app opens straight to the system tray without showing a window (does not apply to the very first run)"; } }
+        public static string MsgStartupRegFailed    { get { return IsHe ? "לא הצלחנו לעדכן את הגדרת ההפעלה עם Windows ברישום (Registry). נסו שוב, או בדקו הרשאות/תוכנת אנטי-וירוס." : "Couldn't update the Windows startup registry entry. Try again, or check permissions/antivirus."; } }
+
+        // --- Global shortcut (§12.4) ---
+        public static string SectionHotkey          { get { return IsHe ? "קיצור מקלדת גלובלי" : "Global Shortcut"; } }
+        public static string LabelHotkeyEnable      { get { return IsHe ? "אפשר קיצור מקלדת גלובלי להתחלה/עצירה של הקלטה" : "Enable a global shortcut to start/stop recording"; } }
+        public static string HotkeyEnableDesc       { get { return IsHe ? "עובד מכל מקום ב-Windows, גם כשהאפליקציה לא בפוקוס - שימושי להשהיית הקלטה מהר לצורכי פרטיות" : "Works from anywhere in Windows, even when the app isn't focused - handy for pausing recording quickly for privacy"; } }
+        public static string LabelHotkeyModifier    { get { return IsHe ? "מקשי עזר" : "Modifier keys"; } }
+        public static string LabelHotkeyKey         { get { return IsHe ? "מקש" : "Key"; } }
+        public static string MsgHotkeyConflict      { get { return IsHe ? "לא הצלחנו לרשום את הקיצור - כנראה שהוא כבר תפוס על ידי תוכנה אחרת. נסו שילוב אחר." : "Couldn't register the shortcut - it's likely already in use by another application. Try a different combination."; } }
+        public static string MsgHotkeyLikelyTaken   { get { return IsHe ? "השילוב שבחרתם נפוץ אצל תוכנות אחרות (למשל דפדפן/Discord/OBS). אם הוא לא עובד כמצופה, נסו שילוב אחר." : "The combination you picked is commonly used by other apps (e.g. browser/Discord/OBS). If it doesn't behave as expected, try a different one."; } }
 
         // --- מקטע נתונים ---
         public static string SectionData            { get { return IsHe ? "קבצים ותיקיות" : "Files & Folders"; } }
