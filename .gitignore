@@ -33,3 +33,6 @@ CHANGELOG.md
 PROJECT.md
 RELEASE-CHECKLIST.md
 DELETIONS.md
+
+# Stray compiled binary from the GenIcon build helper (source .cs/.csproj stay tracked)
+build/app/tools/GenIcon.exe
