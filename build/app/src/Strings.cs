@@ -43,6 +43,11 @@ namespace AutoProcessTwin
         public static string Recording          { get { return IsHe ? "מקליט..." : "Recording..."; } }
         public static string StatusActive       { get { return IsHe ? "פעיל" : "Active"; } }
         public static string StatusStopped      { get { return IsHe ? "עצר" : "Stopped"; } }
+        public static string StatusIdle         { get { return IsHe ? "לא פעיל" : "Idle"; } }
+        public static string LogRecordingStarted    { get { return IsHe ? "--- מתחיל הקלטה ---" : "--- Recording started ---"; } }
+        public static string LogRecorderStopped     { get { return IsHe ? "--- התהליך נעצר (exit {0}) ---" : "--- Process stopped (exit {0}) ---"; } }
+        public static string CountdownNextIn        { get { return IsHe ? "התצפית הבאה בעוד {0}s" : "Next observation in {0}s"; } }
+        public static string CountdownCapturingNow  { get { return IsHe ? "מצלם עכשיו..." : "Capturing now..."; } }
 
         // --- הגדרות כללי - תיאורים ---
         public static string GeneralSettingsTitle   { get { return IsHe ? "הגדרות כלליות" : "General Settings"; } }

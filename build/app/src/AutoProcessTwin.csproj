@@ -24,6 +24,15 @@
     <AssemblyTitle>AutoProcessTwin</AssemblyTitle>
     <Description>Background activity recorder and local morning briefing.</Description>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- Without this, the SDK silently generates its own default manifest and
+         discards app.manifest (it lives one directory up, so it was never
+         auto-detected) - the PerMonitorV2 DPI-awareness declaration below was
+         never actually being embedded into the built exe. Verified by grepping
+         the compiled binary for "PerMonitorV2": absent before this fix. Without
+         it, WPF falls back to System-DPI-aware behavior, which renders blurry/
+         incorrectly scaled when the window is on a monitor at non-100% scaling
+         or is dragged between monitors of different scaling. -->
+    <ApplicationManifest>..\app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

@@ -302,7 +302,7 @@ namespace AutoProcessTwinSetup
     public class SetupForm : Form
     {
         public const string AppName = "AutoProcess Twin";
-        public const string AppVersion = "0.5.4";
+        public const string AppVersion = "0.5.5";
         public const string ExeFileName = "AutoProcessTwin.exe";
         public const string ShortcutFileName = "AutoProcess Twin.lnk";
         private const string InstallDirName = "AutoProcessTwin";

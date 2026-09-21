@@ -18,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.4";
+        public const string AppVersion = "0.5.5";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();
@@ -568,7 +568,7 @@ namespace AutoProcessTwin
 
             var statusInner = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
             _statusDot = new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(5), Background = Theme.Get("TextMutedBrush"), Margin = new Thickness(0, 0, 8, 0) };
-            _statusText = new TextBlock { Text = "לא פעיל", Foreground = Theme.Get("HeaderTextBrush"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
+            _statusText = new TextBlock { Text = Strings.StatusIdle, Foreground = Theme.Get("HeaderTextBrush"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
             statusInner.Children.Add(_statusDot);
             statusInner.Children.Add(_statusText);
             statusStack.Children.Add(statusInner);
@@ -604,7 +604,7 @@ namespace AutoProcessTwin
             }
             else
             {
-                AppendLog("--- מתחיל הקלטה ---");
+                AppendLog(Strings.LogRecordingStarted);
                 _recorder.Start();
                 _nextTickAt = DateTime.Now.AddSeconds(_intervalSlider.Value);
                 _countdownTimer.Start();
@@ -622,16 +622,16 @@ namespace AutoProcessTwin
             }
             var remaining = _nextTickAt - DateTime.Now;
             int secs = (int)Math.Max(0, Math.Ceiling(remaining.TotalSeconds));
-            _countdownText.Text = secs > 0 ? ("התצפית הבאה בעוד " + secs + "s") : "מצלם עכשיו...";
+            _countdownText.Text = secs > 0 ? string.Format(Strings.CountdownNextIn, secs) : Strings.CountdownCapturingNow;
         }
 
         private void UpdateToggleButton()
         {
             bool running = _recorder.IsRunning;
-            _toggleButton.Content = running ? "⏹  עצור הקלטה" : "▶  התחל הקלטה";
+            _toggleButton.Content = running ? Strings.BtnStopRecording : Strings.BtnStartRecording;
             _toggleButton.Style = (Style)Theme.GetStyle(running ? "DangerButtonStyle" : "AccentButtonStyle");
             _statusDot.Background = Theme.Get(running ? "AccentBrush" : "TextMutedBrush");
-            _statusText.Text = running ? "מקליט..." : "לא פעיל";
+            _statusText.Text = running ? Strings.Recording : Strings.StatusIdle;
             UpdateTray();
         }
 
@@ -653,7 +653,7 @@ namespace AutoProcessTwin
         {
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                AppendLog("--- התהליך נעצר (exit " + exitCode + ") ---");
+                AppendLog(string.Format(Strings.LogRecorderStopped, exitCode));
                 _countdownTimer.Stop();
                 _countdownText.Text = "";
                 UpdateToggleButton();

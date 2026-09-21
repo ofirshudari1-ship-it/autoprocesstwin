@@ -8,7 +8,7 @@ AutoProcess Twin records which applications you use throughout the day, identifi
 
 ## Quick Start
 
-1. **Install:** Run `AutoProcessTwin-Setup-0.5.1.exe` (installs to `Program Files` for all users — requires an admin/UAC prompt; your recordings, config and reports stay per-user under `AppData\Local`)
+1. **Install:** Run `AutoProcessTwin-Setup-<version>.exe` (installs to `Program Files` for all users — requires an admin/UAC prompt; your recordings, config and reports stay per-user under `AppData\Local`)
 2. **Launch:** Double-click the desktop shortcut or find it in Start Menu
 3. **Start Recording:** Click the **▶ Start Recording** button
 4. **Stop at end of day:** Click **⏹ Stop Recording**, or let it run in the background
