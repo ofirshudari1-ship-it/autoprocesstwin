@@ -98,7 +98,13 @@ namespace AutoProcessTwin
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var skipBtn = new Button { Content = Strings.BtnSkip, Style = (Style)Theme.GetStyle("GhostButtonStyle"), Width = 90 };
+            // STANDARDS §18.2 - "Skip" must be reachable purely from the keyboard,
+            // and Esc must dismiss the wizard exactly like clicking it (not just
+            // close the window losing the "skip" outcome). IsCancel makes WPF fire
+            // this button's Click on Esc; our handler still sets DialogResult/
+            // StartRecordingRequested explicitly so the skip semantics are identical
+            // whether the user clicked or pressed Esc.
+            var skipBtn = new Button { Content = Strings.BtnSkip, Style = (Style)Theme.GetStyle("GhostButtonStyle"), Width = 90, IsCancel = true };
             skipBtn.Click += (s, e) => { StartRecordingRequested = false; DialogResult = true; };
             Grid.SetColumn(skipBtn, 0);
             grid.Children.Add(skipBtn);
@@ -106,7 +112,9 @@ namespace AutoProcessTwin
             var rightStack = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left };
             _backBtn = new Button { Content = Strings.BtnBack, Style = (Style)Theme.GetStyle("GhostButtonStyle"), Width = 90, Margin = new Thickness(0, 0, 8, 0) };
             _backBtn.Click += (s, e) => { if (_current > 0) ShowPage(_current - 1); };
-            _nextBtn = new Button { Content = Strings.BtnNext, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Width = 110 };
+            // IsDefault so Enter advances the wizard from the keyboard without
+            // requiring a mouse - matches "Tab/Esc/Enter" in STANDARDS §3/§18.2.
+            _nextBtn = new Button { Content = Strings.BtnNext, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Width = 110, IsDefault = true };
             _nextBtn.Click += (s, e) =>
             {
                 if (_current < _pages.Count - 1) ShowPage(_current + 1);

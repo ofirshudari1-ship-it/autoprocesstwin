@@ -18,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.6";
+        public const string AppVersion = "0.5.7";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();
@@ -117,7 +117,8 @@ namespace AutoProcessTwin
 
         // המלצות אוטומציה
         private StackPanel _patternsListPanel;
-        private TextBlock _patternsSummaryText, _patternsEmptyHint;
+        private TextBlock _patternsSummaryText, _patternsEmptyHint, _milestoneText;
+        private int _lastCandidatesFound;
         // פילוח לפי קטגוריה - "לאיזה סוג עבודה הולך הזמן בסה"כ" (report-only
         // rollup across ALL patterns, not just automation candidates - see
         // patterns.js categoryBreakdown). Populated in RefreshPatterns.
@@ -444,6 +445,40 @@ namespace AutoProcessTwin
         }
 
         // §12.1 §12.2 — Tray icon, minimize-to-tray on X
+        // STANDARDS §18.1 - System.Windows.MessageBox does not inherit the
+        // window's FlowDirection on its own; without MessageBoxOptions.RtlReading
+        // a Hebrew user got an English-laid-out box (left-aligned text, OK button
+        // on the LTR side) popping up in the middle of an otherwise-RTL app.
+        // Centralizing every MessageBox.Show call in this window through here
+        // fixes all of them at once instead of patching each call site.
+        private MessageBoxResult ShowMsg(string text, string caption, MessageBoxButton button, MessageBoxImage icon)
+        {
+            var options = Strings.Language == "he" ? MessageBoxOptions.RtlReading : MessageBoxOptions.None;
+            return MessageBox.Show(this, text, caption, button, icon, MessageBoxResult.None, options);
+        }
+
+        // STANDARDS §18.5 - immediate, visible confirmation that a save actually
+        // happened. Previously the only feedback was a line appended to the
+        // activity log on the Home tab, which the user isn't looking at while
+        // sitting on the Privacy/Guardrails/AI settings tab - so a successful
+        // save looked identical to a silently-ignored click. Flips the button
+        // itself to a checkmark for a moment, then restores it.
+        private void FlashSaved(Button btn)
+        {
+            if (btn == null) return;
+            object original = btn.Content;
+            btn.Content = Strings.BtnSaved;
+            btn.IsEnabled = false;
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1100) };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                btn.Content = original;
+                btn.IsEnabled = true;
+            };
+            timer.Start();
+        }
+
         private void InitTray()
         {
             try
@@ -475,8 +510,15 @@ namespace AutoProcessTwin
                         ShowFromTray();
                 };
 
-                // Right-click menu (§12.2)
+                // Right-click menu (§12.2). STANDARDS §18.1 - the WPF window mirrors
+                // via FlowDirection automatically, but the tray ContextMenuStrip is a
+                // separate WinForms control tree that does NOT inherit that - without
+                // this it always rendered LTR (items growing left, text left-aligned)
+                // even in Hebrew, which is the exact "RTL binary yes/no already done
+                // but specific controls still slip through" gap §18.1 calls out.
                 var menu = new System.Windows.Forms.ContextMenuStrip();
+                bool isHeMenu = Strings.Language == "he";
+                menu.RightToLeft = isHeMenu ? System.Windows.Forms.RightToLeft.Yes : System.Windows.Forms.RightToLeft.No;
                 var recItem = new System.Windows.Forms.ToolStripMenuItem(Strings.TrayMenuStartRec);
                 recItem.Click += (s, e) =>
                 {
@@ -1089,18 +1131,18 @@ namespace AutoProcessTwin
 
             if (!regOk)
             {
-                MessageBox.Show(Strings.MsgStartupRegFailed, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowMsg(Strings.MsgStartupRegFailed, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             else if (hotkeyEnabled && !_hotkeyRegistered)
             {
-                MessageBox.Show(Strings.MsgHotkeyConflict, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowMsg(Strings.MsgHotkeyConflict, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             else if (hotkeyEnabled && IsLikelyReservedHotkey(hotkeyMod, hotkeyKey))
             {
-                MessageBox.Show(Strings.MsgHotkeyLikelyTaken, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowMsg(Strings.MsgHotkeyLikelyTaken, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-            MessageBox.Show(Strings.MsgRestartNeeded, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+            ShowMsg(Strings.MsgRestartNeeded, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // §12.4 - a small, honest list of combos that commonly collide with
@@ -1457,7 +1499,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בעדכון יומן הפעילות:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בעדכון יומן הפעילות:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1505,6 +1547,21 @@ namespace AutoProcessTwin
                 FontWeight = FontWeights.SemiBold,
             };
             stack.Children.Add(_patternsSummaryText);
+
+            // STANDARDS §18.4 - a real, already-tracked cumulative count
+            // ("automations configured" = decision_rules the user actually saved
+            // in Guardrails, which persist independently of the retention-purged
+            // activity log) surfaced as a light milestone line. No fake points/
+            // streaks invented - just the real number, shown where it's relevant.
+            _milestoneText = new TextBlock
+            {
+                Style = (Style)Theme.GetStyle("HintLabelStyle"),
+                Foreground = Theme.Get("AccentBrush"),
+                Margin = new Thickness(0, 0, 0, 10),
+                FontWeight = FontWeights.SemiBold,
+                Visibility = Visibility.Collapsed,
+            };
+            stack.Children.Add(_milestoneText);
 
             _patternsEmptyHint = new TextBlock
             {
@@ -1587,13 +1644,13 @@ namespace AutoProcessTwin
             {
                 if (!Directory.Exists(AppPaths.ReportsDir))
                 {
-                    MessageBox.Show(this, "עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowMsg("עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 var htmlFiles = Directory.GetFiles(AppPaths.ReportsDir, "automation-recommendations-*.html");
                 if (htmlFiles.Length == 0)
                 {
-                    MessageBox.Show(this, "עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowMsg("עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 string latest = htmlFiles.OrderByDescending(f => File.GetLastWriteTime(f)).First();
@@ -1601,7 +1658,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בפתיחת הדוח:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בפתיחת הדוח:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1613,13 +1670,13 @@ namespace AutoProcessTwin
             {
                 if (!Directory.Exists(AppPaths.ReportsDir))
                 {
-                    MessageBox.Show(this, "עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowMsg("עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 var csvFiles = Directory.GetFiles(AppPaths.ReportsDir, "automation-recommendations-*.csv");
                 if (csvFiles.Length == 0)
                 {
-                    MessageBox.Show(this, "עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowMsg("עדיין אין דוח - זה נוצר לבד אחרי כמה ימים של הקלטה, או אפשר ללחוץ \"🔄 רענן עכשיו\" בבית.", "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 string latest = csvFiles.OrderByDescending(f => File.GetLastWriteTime(f)).First();
@@ -1627,7 +1684,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בפתיחת ה-CSV:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בפתיחת ה-CSV:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1699,6 +1756,8 @@ namespace AutoProcessTwin
                 }
 
                 AppendLog("[ניתוח] " + candidates.Count + " מועמדים לאוטומציה נמצאו.");
+                _lastCandidatesFound = candidates.Count;
+                UpdateMilestoneText(candidates.Count);
             }
             catch (Exception ex)
             {
@@ -1708,6 +1767,25 @@ namespace AutoProcessTwin
             {
                 _patternsRefreshInFlight = false;
             }
+        }
+
+        // §18.4 - only shown once there is something real to report (both a
+        // recognized recurring action AND at least one saved automation rule),
+        // so an empty/new install never shows "0 of 0" as if that were an
+        // achievement.
+        private void UpdateMilestoneText(int candidatesFound)
+        {
+            if (_milestoneText == null) return;
+            int rulesConfigured = _decisionRules != null ? _decisionRules.Count : 0;
+            if (rulesConfigured <= 0)
+            {
+                _milestoneText.Visibility = Visibility.Collapsed;
+                return;
+            }
+            _milestoneText.Text = Strings.Language == "he"
+                ? ("🏆 " + rulesConfigured + " אוטומציות מוגדרות מתוך " + candidatesFound + " דפוסים שזוהו")
+                : ("🏆 " + rulesConfigured + " automation" + (rulesConfigured == 1 ? "" : "s") + " configured out of " + candidatesFound + " recognized patterns");
+            _milestoneText.Visibility = Visibility.Visible;
         }
 
         // פילוח לפי קטגוריה - "לאן הזמן הולך בגדול" (patterns.js:
@@ -2018,7 +2096,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בהסתרת ההמלצה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בהסתרת ההמלצה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2035,7 +2113,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בביטול ההסתרה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בביטול ההסתרה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2152,7 +2230,7 @@ namespace AutoProcessTwin
             settingsStack.Children.Add(_ocrEnabledBox);
 
             var saveBtn = new Button { Content = "שמור הגדרות פרטיות", Width = 200, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Margin = new Thickness(0, 18, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-            saveBtn.Click += (s, e) => SavePrivacyFromUi();
+            saveBtn.Click += (s, e) => { SavePrivacyFromUi(); FlashSaved(saveBtn); };
             settingsStack.Children.Add(saveBtn);
 
             settingsCard.Child = settingsStack;
@@ -2255,7 +2333,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2319,7 +2397,7 @@ namespace AutoProcessTwin
             });
 
             var saveBoundsBtn = new Button { Content = "שמור Guardrails", Width = 180, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Margin = new Thickness(0, 18, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-            saveBoundsBtn.Click += (s, e) => SaveGuardrailsFromUi();
+            saveBoundsBtn.Click += (s, e) => { SaveGuardrailsFromUi(); FlashSaved(saveBoundsBtn); };
             boundsStack.Children.Add(saveBoundsBtn);
 
             boundsCard.Child = boundsStack;
@@ -2468,10 +2546,11 @@ namespace AutoProcessTwin
                 ConfigStore.SaveGuardrails(data);
                 _guardrailsConfig = data;
                 AppendLog("[guardrails] נשמר.");
+                UpdateMilestoneText(_lastCandidatesFound);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2510,7 +2589,7 @@ namespace AutoProcessTwin
             cardStack.Children.Add(_aiKeyBox);
 
             var saveBtn = new Button { Content = "שמור הגדרות AI", Width = 160, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Margin = new Thickness(0, 18, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-            saveBtn.Click += (s, e) => SaveAiFromUi();
+            saveBtn.Click += (s, e) => { SaveAiFromUi(); FlashSaved(saveBtn); };
             cardStack.Children.Add(saveBtn);
 
             card.Child = cardStack;
@@ -2547,7 +2626,7 @@ namespace AutoProcessTwin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowMsg("שגיאה בשמירה:\n" + ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2805,11 +2884,11 @@ namespace AutoProcessTwin
                 {
                     string path = Path.Combine(AppPaths.Root, fileName);
                     if (File.Exists(path)) Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                    else MessageBox.Show(this, "לא נמצא: " + path, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    else ShowMsg("לא נמצא: " + path, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowMsg(ex.Message, "AutoProcess Twin", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             };
             parent.Children.Add(btn);

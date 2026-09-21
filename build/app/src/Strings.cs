@@ -30,6 +30,10 @@ namespace AutoProcessTwin
         public static string LangHe           { get { return "עברית (Hebrew)"; } }
         public static string LangEn           { get { return "English"; } }
         public static string BtnSave          { get { return IsHe ? "שמור" : "Save"; } }
+        // STANDARDS §18.5 - brief inline confirmation shown on the Save button
+        // itself right after a successful save (privacy/guardrails/AI tabs),
+        // not just a line in the activity log the user may not be looking at.
+        public static string BtnSaved         { get { return IsHe ? "✓ נשמר" : "✓ Saved"; } }
         public static string BtnCancel        { get { return IsHe ? "ביטול" : "Cancel"; } }
         public static string MsgRestartNeeded { get { return IsHe ? "חלק מהשינויים ייכנסו לתוקף בהפעלה הבאה." : "Some changes will take effect after restart."; } }
 
