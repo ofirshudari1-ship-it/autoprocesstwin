@@ -29,6 +29,13 @@ namespace AutoProcessTwin
         {
             public string Version;
             public string HtmlUrl;
+            // 0.5.6: מסלול self-update (ר' SelfUpdater.cs) - שם/URL/גודל של
+            // ה-asset שהוא ה-installer (AutoProcessTwin-Setup-X.Y.Z.exe) מתוך
+            // release ה-GitHub, אם נמצא כזה. AssetSize משמש לאימות הורדה
+            // (השוואה מול גודל הקובץ שהתקבל בפועל - לא checksum, אבל מספיק
+            // כדי לתפוס הורדה חתוכה/נכשלת).
+            public string AssetDownloadUrl;
+            public long AssetSize;
         }
 
         // סינכרוני בכוונה - הקורא (MainWindow) עוטף ב-Task.Run, בדיוק כמו
@@ -62,9 +69,32 @@ namespace AutoProcessTwin
                     string htmlUrl = Json.GetString(data, "html_url", ReleasesPageUrl);
                     string latest = tag.TrimStart('v', 'V');
 
-                    return IsNewer(latest, currentVersion)
-                        ? new UpdateInfo { Version = latest, HtmlUrl = htmlUrl }
-                        : null;
+                    if (!IsNewer(latest, currentVersion)) return null;
+
+                    string assetUrl = null;
+                    long assetSize = 0;
+                    foreach (var item in Json.AsList(data.ContainsKey("assets") ? data["assets"] : null))
+                    {
+                        var asset = item as Dictionary<string, object>;
+                        if (asset == null) continue;
+                        string name = Json.GetString(asset, "name", "");
+                        // ה-installer בלבד - לא source zip/tarball שGitHub מצרף אוטומטית.
+                        if (name.StartsWith("AutoProcessTwin-Setup-", StringComparison.OrdinalIgnoreCase) &&
+                            name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            assetUrl = Json.GetString(asset, "browser_download_url", null);
+                            assetSize = (long)Json.GetNumber(asset, "size", 0);
+                            break;
+                        }
+                    }
+
+                    return new UpdateInfo
+                    {
+                        Version = latest,
+                        HtmlUrl = htmlUrl,
+                        AssetDownloadUrl = assetUrl,
+                        AssetSize = assetSize
+                    };
                 }
             }
             catch

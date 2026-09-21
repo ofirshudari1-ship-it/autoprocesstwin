@@ -18,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.5";
+        public const string AppVersion = "0.5.6";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();
@@ -91,6 +91,13 @@ namespace AutoProcessTwin
         private TextBlock _updateStatusText;
         private bool _updateCheckDoneThisSession;
         private UpdateChecker.UpdateInfo _pendingUpdate;
+
+        // Self-update (0.5.6): "Automatically download and install updates" opt-in
+        // toggle (Settings > General) + "Update Now" one-click action (About tab).
+        // ר' SelfUpdater.cs לביצוע בפועל (הורדה/אימות/הפעלה שקטה).
+        private CheckBox _autoUpdateBox;
+        private Button _updateNowBtn;
+        private bool _updateInProgress;
 
         // Tray (§12.1, §12.2 STANDARDS)
         private System.Windows.Forms.NotifyIcon _tray;
@@ -232,6 +239,20 @@ namespace AutoProcessTwin
 
             if (info == null) return;
             _pendingUpdate = info;
+
+            // Opt-in silent path (Settings > "Automatically download and install
+            // updates", default OFF): instead of the passive tray notification,
+            // go straight for a full self-update. Still falls back to
+            // NotifyUpdateAvailable on any failure - see PerformSelfUpdate.
+            if (Json.GetBool(_appConfig, "auto_update_enabled", false))
+            {
+                // Already on the UI thread here (WPF resumes async continuations
+                // on the captured SynchronizationContext after each await above) -
+                // no Dispatcher.BeginInvoke needed, same as ManualCheckForUpdates.
+                PerformSelfUpdate(info, isAutomatic: true);
+                return;
+            }
+
             NotifyUpdateAvailable(info);
         }
 
@@ -307,6 +328,119 @@ namespace AutoProcessTwin
                 Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
             }
             catch { }
+        }
+
+        // "Update Now" button (About tab) - explicit user click, always allowed
+        // regardless of the "auto_update_enabled" toggle (that toggle only
+        // controls whether a *found* update triggers this automatically).
+        private async void UpdateNowClicked()
+        {
+            if (_updateInProgress) return;
+
+            UpdateChecker.UpdateInfo info = _pendingUpdate;
+            if (info == null)
+            {
+                SetUpdateStatus(Strings.Language == "he" ? "בודק..." : "Checking...");
+                try
+                {
+                    info = await Task.Run(new Func<UpdateChecker.UpdateInfo>(
+                        () => UpdateChecker.CheckSync(AppVersion)));
+                }
+                catch { }
+
+                if (info == null)
+                {
+                    SetUpdateStatus(Strings.Language == "he"
+                        ? ("אתם מעודכנים (v" + AppVersion + ").")
+                        : ("You're up to date (v" + AppVersion + ")."));
+                    return;
+                }
+                _pendingUpdate = info;
+            }
+
+            PerformSelfUpdate(info, isAutomatic: false);
+        }
+
+        private void SetUpdateStatus(string text)
+        {
+            if (_updateStatusText != null) _updateStatusText.Text = text;
+        }
+
+        // Real one-click self-update: download the installer the release points
+        // to -> verify the download completed -> stop recording + close the app
+        // cleanly -> launch the installer with /VERYSILENT (elevated via UAC).
+        // Any failure at any stage falls back to the existing manual-download
+        // notification (NotifyUpdateAvailable) instead of leaving the user stuck.
+        // See SelfUpdater.cs for the download/launch mechanics.
+        private async void PerformSelfUpdate(UpdateChecker.UpdateInfo info, bool isAutomatic)
+        {
+            if (_updateInProgress) return;
+            _updateInProgress = true;
+            if (_updateNowBtn != null) _updateNowBtn.IsEnabled = false;
+
+            try
+            {
+                SetUpdateStatus(Strings.MsgUpdateDownloading);
+
+                SelfUpdater.DownloadOutcome download = null;
+                try
+                {
+                    download = await Task.Run(new Func<SelfUpdater.DownloadOutcome>(
+                        () => SelfUpdater.DownloadInstaller(info)));
+                }
+                catch (Exception ex)
+                {
+                    download = new SelfUpdater.DownloadOutcome
+                    {
+                        Result = SelfUpdater.DownloadResult.NetworkError,
+                        ErrorDetail = ex.Message
+                    };
+                }
+
+                if (download == null || download.Result != SelfUpdater.DownloadResult.Ok)
+                {
+                    string msg = Strings.MsgUpdateNetworkError;
+                    if (download != null)
+                    {
+                        switch (download.Result)
+                        {
+                            case SelfUpdater.DownloadResult.NoAssetUrl: msg = Strings.MsgUpdateNoAsset; break;
+                            case SelfUpdater.DownloadResult.DiskError: msg = Strings.MsgUpdateDiskError; break;
+                            case SelfUpdater.DownloadResult.SizeMismatch: msg = Strings.MsgUpdateSizeMismatch; break;
+                        }
+                    }
+                    SetUpdateStatus(msg);
+                    NotifyUpdateAvailable(info);
+                    return;
+                }
+
+                SetUpdateStatus(Strings.MsgUpdateVerifying);
+                // DownloadInstaller already verified size before returning Ok -
+                // this status is mostly UI pacing so "downloading" doesn't jump
+                // straight to "launching" for a large file.
+
+                SetUpdateStatus(Strings.MsgUpdateLaunching);
+                var launch = SelfUpdater.LaunchSilentInstaller(download.FilePath);
+                if (launch.Result != SelfUpdater.LaunchResult.Ok)
+                {
+                    SetUpdateStatus(launch.Result == SelfUpdater.LaunchResult.ElevationDeclined
+                        ? Strings.MsgUpdateElevationDeclined
+                        : Strings.MsgUpdateLaunchFailed);
+                    NotifyUpdateAvailable(info);
+                    return;
+                }
+
+                // Installer is launched and (once the user approves UAC) will wait
+                // for AutoProcessTwin.exe to exit before overwriting it. Stop the
+                // recorder cleanly and exit now - RequestExit() already handles
+                // stopping mid-task recording, timers, tray icon and hotkey.
+                RequestExit();
+            }
+            finally
+            {
+                _updateInProgress = false;
+                if (_updateNowBtn != null) _updateNowBtn.IsEnabled = true;
+            }
         }
 
         // §12.1 §12.2 — Tray icon, minimize-to-tray on X
@@ -797,6 +931,9 @@ namespace AutoProcessTwin
             _checkUpdatesBox = new CheckBox { Content = Strings.LabelCheckUpdates };
             stack.Children.Add(MakeCheckRow(_checkUpdatesBox, Strings.CheckUpdatesDesc));
 
+            _autoUpdateBox = new CheckBox { Content = Strings.LabelAutoUpdate };
+            stack.Children.Add(MakeCheckRow(_autoUpdateBox, Strings.AutoUpdateDesc));
+
             stack.Children.Add(MakeSettingsDivider());
 
             // ── Section: Global Shortcut (§12.4 - always user-configurable, never hardcoded) ──
@@ -895,6 +1032,7 @@ namespace AutoProcessTwin
             var startMinimized = Json.GetBool(_appConfig, "start_minimized", false);
             var autoRecord = Json.GetBool(_appConfig, "auto_record", false);
             var checkUpdates = Json.GetBool(_appConfig, "check_for_updates", true);
+            var autoUpdate = Json.GetBool(_appConfig, "auto_update_enabled", false);
             var hotkeyEnabled = Json.GetBool(_appConfig, "hotkey_enabled", false);
             var hotkeyMod = Json.GetString(_appConfig, "hotkey_modifiers", "Ctrl+Alt");
             var hotkeyKey = Json.GetString(_appConfig, "hotkey_key", "R");
@@ -905,6 +1043,7 @@ namespace AutoProcessTwin
             if (_startMinimizedBox != null) _startMinimizedBox.IsChecked = startMinimized;
             if (_autoRecordBox != null) _autoRecordBox.IsChecked = autoRecord;
             if (_checkUpdatesBox != null) _checkUpdatesBox.IsChecked = checkUpdates;
+            if (_autoUpdateBox != null) _autoUpdateBox.IsChecked = autoUpdate;
             if (_hotkeyEnabledBox != null) _hotkeyEnabledBox.IsChecked = hotkeyEnabled;
             if (_hotkeyModifierCombo != null)
             {
@@ -926,6 +1065,7 @@ namespace AutoProcessTwin
             var startMinimized = _startMinimizedBox != null && _startMinimizedBox.IsChecked == true;
             var autoRecord = _autoRecordBox != null && _autoRecordBox.IsChecked == true;
             var checkUpdates = _checkUpdatesBox == null || _checkUpdatesBox.IsChecked == true;
+            var autoUpdate = _autoUpdateBox != null && _autoUpdateBox.IsChecked == true;
             var hotkeyEnabled = _hotkeyEnabledBox != null && _hotkeyEnabledBox.IsChecked == true;
             var hotkeyMod = _hotkeyModifierCombo != null && _hotkeyModifierCombo.SelectedItem != null
                 ? _hotkeyModifierCombo.SelectedItem.ToString() : "Ctrl+Alt";
@@ -938,6 +1078,7 @@ namespace AutoProcessTwin
             _appConfig["start_minimized"] = startMinimized;
             _appConfig["auto_record"] = autoRecord;
             _appConfig["check_for_updates"] = checkUpdates;
+            _appConfig["auto_update_enabled"] = autoUpdate;
             _appConfig["hotkey_enabled"] = hotkeyEnabled;
             _appConfig["hotkey_modifiers"] = hotkeyMod;
             _appConfig["hotkey_key"] = hotkeyKey;
@@ -2620,6 +2761,11 @@ namespace AutoProcessTwin
             var checkUpdatesBtn = new Button { Content = Strings.BtnCheckForUpdates, Style = (Style)Theme.GetStyle("GhostButtonStyle"), Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Width = 280 };
             checkUpdatesBtn.Click += (s, e) => ManualCheckForUpdates();
             cardStack.Children.Add(checkUpdatesBtn);
+
+            // "עדכן עכשיו" - הורדה+התקנה שקטה בלחיצה אחת (0.5.6), ר' PerformSelfUpdate.
+            _updateNowBtn = new Button { Content = Strings.BtnUpdateNow, Style = (Style)Theme.GetStyle("AccentButtonStyle"), Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left, Width = 280 };
+            _updateNowBtn.Click += (s, e) => UpdateNowClicked();
+            cardStack.Children.Add(_updateNowBtn);
 
             _updateStatusText = new TextBlock
             {

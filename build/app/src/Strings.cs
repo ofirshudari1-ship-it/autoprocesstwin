@@ -60,6 +60,18 @@ namespace AutoProcessTwin
         public static string LabelCheckUpdates      { get { return IsHe ? "בדוק עדכונים אוטומטית" : "Automatically check for updates"; } }
         public static string CheckUpdatesDesc       { get { return IsHe ? "בדיקה שקטה מול GitHub בכל הפעלה; לא מוריד ולא מתקין כלום לבד - רק מודיע" : "A quiet check against GitHub on each launch; never downloads or installs anything on its own - only notifies"; } }
         public static string BtnCheckForUpdates     { get { return IsHe ? "בדוק עדכונים עכשיו" : "Check for Updates Now"; } }
+        public static string LabelAutoUpdate        { get { return IsHe ? "הורד והתקן עדכונים אוטומטית" : "Automatically download and install updates"; } }
+        public static string AutoUpdateDesc         { get { return IsHe ? "כשנמצא עדכון: מוריד את ה-installer, מאמת שההורדה הושלמה, ומתקין אותו במצב שקט (בלי אשפים) - האפליקציה נסגרת לצורך ההתקנה ותצטרכו לאשר UAC. כבוי כברירת מחדל." : "When an update is found: downloads the installer, verifies the download completed, and installs it silently (no wizard) - the app closes for the install and you'll need to approve the UAC prompt. Off by default."; } }
+        public static string BtnUpdateNow           { get { return IsHe ? "עדכן עכשיו" : "Update Now"; } }
+        public static string MsgUpdateDownloading   { get { return IsHe ? "מוריד עדכון..." : "Downloading update..."; } }
+        public static string MsgUpdateVerifying     { get { return IsHe ? "מאמת את ההורדה..." : "Verifying download..."; } }
+        public static string MsgUpdateLaunching     { get { return IsHe ? "מפעיל את ההתקנה (אשרו את בקשת ה-UAC)..." : "Launching the installer (approve the UAC prompt)..."; } }
+        public static string MsgUpdateNoAsset       { get { return IsHe ? "לא נמצא קובץ התקנה בגרסה הזו - עוברים לעמוד ההורדה הידני." : "No installer file found for this release - falling back to the manual download page."; } }
+        public static string MsgUpdateNetworkError  { get { return IsHe ? "ההורדה נכשלה (בעיית רשת). עוברים לעמוד ההורדה הידני." : "Download failed (network problem). Falling back to the manual download page."; } }
+        public static string MsgUpdateDiskError     { get { return IsHe ? "ההורדה נכשלה (בעיית דיסק/הרשאות). עוברים לעמוד ההורדה הידני." : "Download failed (disk or permissions problem). Falling back to the manual download page."; } }
+        public static string MsgUpdateSizeMismatch  { get { return IsHe ? "ההורדה לא הושלמה במלואה. עוברים לעמוד ההורדה הידני." : "The download didn't complete fully. Falling back to the manual download page."; } }
+        public static string MsgUpdateElevationDeclined { get { return IsHe ? "בקשת ה-UAC נדחתה - העדכון לא הותקן. אפשר לנסות שוב מ-'עדכן עכשיו', או להוריד ידנית." : "The UAC prompt was declined - the update wasn't installed. Try 'Update Now' again, or download manually."; } }
+        public static string MsgUpdateLaunchFailed  { get { return IsHe ? "לא הצלחנו להפעיל את ההתקנה. עוברים לעמוד ההורדה הידני." : "Couldn't launch the installer. Falling back to the manual download page."; } }
         public static string LabelStartMinimized    { get { return IsHe ? "התחל ממוזער למגש" : "Start minimized to tray"; } }
         public static string StartMinimizedDesc     { get { return IsHe ? "האפליקציה תיפתח ישר למגש המערכת, בלי להציג חלון (לא חל על ריצה ראשונה)" : "The app opens straight to the system tray without showing a window (does not apply to the very first run)"; } }
         public static string MsgStartupRegFailed    { get { return IsHe ? "לא הצלחנו לעדכן את הגדרת ההפעלה עם Windows ברישום (Registry). נסו שוב, או בדקו הרשאות/תוכנת אנטי-וירוס." : "Couldn't update the Windows startup registry entry. Try again, or check permissions/antivirus."; } }

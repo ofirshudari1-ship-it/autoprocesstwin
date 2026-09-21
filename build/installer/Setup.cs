@@ -302,12 +302,14 @@ namespace AutoProcessTwinSetup
     public class SetupForm : Form
     {
         public const string AppName = "AutoProcess Twin";
-        public const string AppVersion = "0.5.5";
+        public const string AppVersion = "0.5.6";
         public const string ExeFileName = "AutoProcessTwin.exe";
         public const string ShortcutFileName = "AutoProcess Twin.lnk";
         private const string InstallDirName = "AutoProcessTwin";
         private const string PayloadResourceName = "AutoProcessTwinSetup.payload.zip";
-        private const string UninstallKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\" + InstallDirName;
+        // public - reused by Program.RunSilentInstall (0.5.6) to detect an
+        // existing install without duplicating the registry key path.
+        public const string UninstallKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\" + InstallDirName;
 
         private Panel _pageWelcome, _pageProgress, _pageFinish;
         private ThemedProgressBar _progressBar;
@@ -421,23 +423,47 @@ namespace AutoProcessTwinSetup
 
         private void DetectExistingInstall()
         {
-            _installDir = SetupForm.DefaultInstallDir();
+            var state = DetectInstallState();
+            _installDir = state.InstallDir;
+            _alreadyInstalled = state.AlreadyInstalled;
+            _existingVersion = state.ExistingVersion;
+            _legacyInstallDir = state.LegacyInstallDir;
+        }
+
+        // Result of registry-based install-location detection - pulled out of
+        // DetectExistingInstall (which mutates instance fields for the GUI wizard)
+        // so the headless /SILENT /VERYSILENT path (SetupForm.RunSilentInstall,
+        // no Form instance at all) can reuse the exact same "where is it already
+        // installed, and is there a pre-0.5.1 legacy AppData install to migrate"
+        // logic instead of duplicating it - the whole point of §1 in the
+        // self-update spec ("reuse that logic rather than duplicating it").
+        private struct InstallState
+        {
+            public string InstallDir;
+            public bool AlreadyInstalled;
+            public string ExistingVersion;
+            public string LegacyInstallDir;
+        }
+
+        private static InstallState DetectInstallState()
+        {
+            var state = new InstallState { InstallDir = SetupForm.DefaultInstallDir() };
             try
             {
                 using (var key = Registry.LocalMachine.OpenSubKey(UninstallKeyPath))
                 {
                     if (key != null)
                     {
-                        _existingVersion = key.GetValue("DisplayVersion") as string;
+                        state.ExistingVersion = key.GetValue("DisplayVersion") as string;
                         var existingDir = key.GetValue("InstallLocation") as string;
-                        if (!string.IsNullOrEmpty(existingDir)) _installDir = existingDir;
-                        _alreadyInstalled = true;
+                        if (!string.IsNullOrEmpty(existingDir)) state.InstallDir = existingDir;
+                        state.AlreadyInstalled = true;
                     }
                 }
             }
             catch { }
 
-            if (_alreadyInstalled) return;
+            if (state.AlreadyInstalled) return state;
 
             // אין התקנת Program Files - בודקים אם יש התקנת AppData ישנה
             // (<=0.5.0) כדי להציג "עדכון" נכון ולנקות אותה אחרי ההתקנה החדשה.
@@ -447,16 +473,124 @@ namespace AutoProcessTwinSetup
                 {
                     if (legacyKey != null)
                     {
-                        _existingVersion = legacyKey.GetValue("DisplayVersion") as string;
+                        state.ExistingVersion = legacyKey.GetValue("DisplayVersion") as string;
                         var existingDir = legacyKey.GetValue("InstallLocation") as string;
-                        _legacyInstallDir = !string.IsNullOrEmpty(existingDir) ? existingDir : LegacyInstallDirDefault;
-                        _alreadyInstalled = true;
-                        // _installDir נשאר ב-Program Files (ברירת המחדל החדשה) -
+                        state.LegacyInstallDir = !string.IsNullOrEmpty(existingDir) ? existingDir : LegacyInstallDirDefault;
+                        state.AlreadyInstalled = true;
+                        // InstallDir נשאר ב-Program Files (ברירת המחדל החדשה) -
                         // זו "התקנה מחדש" לוקיישן חדש, לא עדכון במקום.
                     }
                 }
             }
             catch { }
+            return state;
+        }
+
+        // === Headless silent install/update: /SILENT and /VERYSILENT ===
+        //
+        // Added for the self-update feature (MainWindow/UpdateChecker download
+        // the installer .exe and launch it with this switch). Both spelling
+        // are accepted and behave identically - this custom installer has no
+        // "show a progress bar but no prompts" middle ground the way Inno Setup
+        // distinguishes /SILENT from /VERYSILENT, so both mean "zero windows,
+        // zero dialogs, zero user interaction".
+        //
+        // Sequence: elevate (relaunch itself with runas + wait, if not already
+        // admin) -> refuse if AutoProcessTwin.exe is still running (no MessageBox
+        // possible headless - EnsureAppNotRunning's retry/cancel prompt only
+        // makes sense for the GUI wizard) -> reuse DetectInstallState() so an
+        // update lands in the SAME directory as the existing install and never
+        // touches config/data/reports (ExtractPayload already skips
+        // privacy.json/guardrails.json when they exist; twin.db and reports/
+        // aren't in the payload at all) -> PerformInstall (identical code path
+        // the GUI wizard uses) -> best-effort legacy-AppData cleanup, same as
+        // the wizard.
+        //
+        // Exit codes (checked by SelfUpdater.cs on the app side):
+        //   0 = success
+        //   1 = install failed (disk full, corrupt payload, unexpected exception)
+        //   2 = UAC elevation was declined/cancelled, or could not be requested
+        //   3 = AutoProcessTwin.exe is still running and locking its own files
+        //
+        // Optional trailing "/RELAUNCH" arg starts the app again after a
+        // successful install (nice-to-have relaunch-after-update).
+        public static int RunSilentInstall(string[] args)
+        {
+            bool relaunchAfter = false;
+            foreach (var a in args)
+                if (string.Equals(a, "/RELAUNCH", StringComparison.OrdinalIgnoreCase)) relaunchAfter = true;
+
+            if (!IsAdminProcess())
+            {
+                try
+                {
+                    var cmdArgs = Environment.GetCommandLineArgs();
+                    string argStr = cmdArgs.Length > 1
+                        ? string.Join(" ", cmdArgs, 1, cmdArgs.Length - 1)
+                        : string.Empty;
+                    var psi = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location)
+                    {
+                        Verb = "runas",
+                        Arguments = argStr,
+                        UseShellExecute = true
+                    };
+                    using (var proc = Process.Start(psi))
+                    {
+                        proc.WaitForExit();
+                        return proc.ExitCode;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception wex)
+                {
+                    // ERROR_CANCELLED (1223): the user clicked "No" on the UAC prompt.
+                    Console.WriteLine("ERROR UAC elevation was declined or unavailable: " + wex.Message);
+                    return 2;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("ERROR Failed to elevate for silent install: " + ex.Message);
+                    return 2;
+                }
+            }
+
+            if (Process.GetProcessesByName("AutoProcessTwin").Length > 0)
+            {
+                Console.WriteLine("ERROR AutoProcessTwin.exe is still running - cannot silently overwrite its own files. " +
+                    "The caller (SelfUpdater) is expected to stop the app before launching this installer; " +
+                    "if this fires, something else is running a second copy.");
+                return 3;
+            }
+
+            try
+            {
+                var state = DetectInstallState();
+                string exePath = PerformInstall(state.InstallDir, true, true);
+                if (!string.IsNullOrEmpty(state.LegacyInstallDir))
+                {
+                    CleanupLegacyInstall(state.LegacyInstallDir);
+                }
+                Console.WriteLine("OK " + exePath);
+
+                if (relaunchAfter)
+                {
+                    try { Process.Start(exePath); } catch { /* best-effort - not fatal to the update itself */ }
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("ERROR " + ex.Message);
+                return 1;
+            }
+        }
+
+        private static bool IsAdminProcess()
+        {
+            using (var id = WindowsIdentity.GetCurrent())
+            {
+                var p = new WindowsPrincipal(id);
+                return p.IsInRole(WindowsBuiltInRole.Administrator);
+            }
         }
 
         private Control BuildHeader()
@@ -861,6 +995,15 @@ namespace AutoProcessTwinSetup
         [STAThread]
         static void Main(string[] args)
         {
+            if (args.Length > 0 && (string.Equals(args[0], "/SILENT", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(args[0], "/VERYSILENT", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Real production self-update path - see SetupForm.RunSilentInstall
+                // for the full contract (elevation, exit codes, location reuse).
+                Environment.Exit(SetupForm.RunSilentInstall(args));
+                return;
+            }
+
             if (args.Length > 0 && args[0] == "--silent-install")
             {
                 // מסלול לא-גרפי לבדיקה אוטומטית / פריסה מתוסרטת: אותה בדיוק
