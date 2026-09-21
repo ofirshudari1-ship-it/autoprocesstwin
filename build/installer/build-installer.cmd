@@ -27,18 +27,28 @@ if errorlevel 1 (
 )
 
 echo.
-echo === שלב 3: מקמפל את AutoProcessTwin-Setup-0.5.7.exe ===
+echo === שלב 3: מקמפל את AutoProcessTwin-Setup-0.5.8.exe ===
 "%CSC%" -nologo -target:winexe -win32icon:..\app\AppIcon.ico ^
   -r:System.Windows.Forms.dll -r:System.Drawing.dll ^
   -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll ^
   -resource:payload.zip,AutoProcessTwinSetup.payload.zip ^
-  -out:"..\..\AutoProcessTwin-Setup-0.5.7.exe" Setup.cs
+  -out:"..\..\AutoProcessTwin-Setup-0.5.8.exe" Setup.cs
 if errorlevel 1 (
     echo קומפילציית ההתקנה נכשלה.
     exit /b 1
 )
 
 del payload.zip
+
 echo.
-echo מוכן: ..\..\AutoProcessTwin-Setup-0.5.7.exe
+echo === שלב 4: מנקה קבצי installer ישנים בשורש ===
+for %%F in (..\..\AutoProcessTwin-Setup-*.exe) do (
+    if /I not "%%~nxF"=="AutoProcessTwin-Setup-0.5.8.exe" (
+        echo מוחק ישן: %%~nxF
+        del /f /q "%%F"
+    )
+)
+
+echo.
+echo מוכן: ..\..\AutoProcessTwin-Setup-0.5.8.exe
 endlocal
