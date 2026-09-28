@@ -55,6 +55,7 @@
   .btn-ghost{background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.18);}
   .btn-ghost:hover{background:var(--surface2); text-decoration:none;}
   .version-note{margin-top:var(--space-3); font-size:12.5px; color:var(--text-muted);}
+  .hero-img{width:100%; max-width:480px; height:auto; margin:var(--space-6) auto 0; border-radius:16px; display:block;}
 
   h2{font-size:26px; margin:0 0 var(--space-2);}
   .section-lead{color:var(--text-muted); margin:0 0 var(--space-6); max-width:640px;}
@@ -121,6 +122,7 @@
       <a class="btn btn-ghost" href="#how" data-t="hero_cta_how">See how it works</a>
     </div>
     <p class="version-note" data-t="hero_version_note">Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically</p>
+    <img class="hero-img" src="../assets/marketing/hero.webp" data-t-alt="hero_img_alt" alt="A dashboard window highlighting one repeated task pattern with a magnifying glass and checkmark, surrounded by icons for file transfers, CRM records and copy-paste work feeding into an automation recommendation card" width="1000" height="1000" loading="lazy">
   </section>
 
   <!-- 2 & 3. What it does + screenshot -->
@@ -269,6 +271,7 @@
       hero_tagline:"AutoProcess Twin quietly watches which everyday tasks repeat — CRM entries, file transfers, copy-paste busywork — and shows you exactly where automation would save real time each month.",
       hero_cta_download:"Download for Windows — free",
       hero_cta_how:"See how it works",
+      hero_img_alt:"A dashboard window highlighting one repeated task pattern with a magnifying glass and checkmark, surrounded by icons for file transfers, CRM records and copy-paste work feeding into an automation recommendation card",
       hero_version_note:"Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically",
       how_h2:"What it does, and why it exists",
       how_lead:"Most repetitive work never gets automated because nobody has hard numbers on how much time it actually costs. AutoProcess Twin builds those numbers automatically: it records which app and window title is active every 20 seconds, groups the recurring ones into patterns, and turns that into a monthly picture of where manual work is eating hours — so a manager can decide where automation or AI actually pays off, instead of guessing.",
@@ -332,6 +335,7 @@
       hero_tagline:"AutoProcess Twin עוקב בשקט אחרי משימות יומיומיות שחוזרות על עצמן — תיעוד ב-CRM, העברת קבצים, העתק-הדבק — ומראה בדיוק איפה אוטומציה תחסוך זמן אמיתי כל חודש.",
       hero_cta_download:"הורדה ל-Windows — חינם",
       hero_cta_how:"איך זה עובד",
+      hero_img_alt:"חלון דשבורד עם זכוכית מגדלת וסימן וי המדגישים דפוס פעולה חוזר, מוקף באייקונים של העברת קבצים, רשומות CRM והעתק-הדבק שמוזנים לכרטיס המלצת אוטומציה",
       hero_version_note:"גרסה 0.5.2 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה · בודק עדכונים אוטומטית",
       how_h2:"מה זה עושה, ולמה זה קיים",
       how_lead:"רוב העבודה החוזרת אף פעם לא מקבלת אוטומציה כי אין למי שמחליט מספרים אמיתיים על כמה זמן היא באמת עולה. AutoProcess Twin בונה את המספרים האלה אוטומטית: מתעד איזו אפליקציה וכותרת חלון פעילות כל 20 שניות, מקבץ את מה שחוזר לדפוסים, והופך את זה לתמונה חודשית של איפה עבודה ידנית בולעת שעות — כדי שמנהל יוכל להחליט איפה אוטומציה או AI באמת משתלמים, בלי לנחש.",
@@ -398,6 +402,10 @@
     document.querySelectorAll("[data-t]").forEach(function(el){
       var key = el.getAttribute("data-t");
       if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    document.querySelectorAll("[data-t-alt]").forEach(function(el){
+      var key = el.getAttribute("data-t-alt");
+      if (dict[key] !== undefined) el.alt = dict[key];
     });
     document.getElementById("langToggle").textContent = dict.toggle_label;
     try { localStorage.setItem("apt_site_lang", lang); } catch(e){}

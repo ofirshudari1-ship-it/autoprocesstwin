@@ -1,0 +1,11 @@
+{
+  "file": "hero.webp",
+  "source": "hero-source.png",
+  "dimensions": "1000x1000",
+  "generated_by": "local-designer skill (100% local SVG rendered with sharp, no generative AI, no Bloom credits used)",
+  "generated_date": "2026-09-29",
+  "palette_source": "assets/BRAND.md + build/app/src/Theme.cs (dark-slate #0F172A/#1E293B + emerald accent #10B981/#34D399, warning #FBBF24, error #F87171) - the app's real shipped colors, not the stale purple (#6450DC) BRAND.md flags as never actually implemented",
+  "usage": "Marketing hero for site/index.html hero section",
+  "alt_en": "A dashboard window highlighting one repeated task pattern with a magnifying glass and checkmark, surrounded by icons for file transfers, CRM records and copy-paste work feeding into an automation recommendation card",
+  "alt_he": "חלון דשבורד עם זכוכית מגדלת וסימן וי המדגישים דפוס פעולה חוזר, מוקף באייקונים של העברת קבצים, רשומות CRM והעתק-הדבק שמוזנים לכרטיס המלצת אוטומציה"
+}

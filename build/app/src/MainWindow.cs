@@ -18,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.8";
+        public const string AppVersion = "0.5.9";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();

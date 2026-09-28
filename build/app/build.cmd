@@ -23,6 +23,7 @@ echo מקמפל AutoProcessTwin.exe...
   -r:"%FX%\System.Xaml.dll" -r:"%FX%\System.Web.Extensions.dll" -r:"%FX%\System.Core.dll" ^
   -r:"%FX%\System.dll" -r:"%FX%\System.Xml.dll" -r:"%FX%\System.Security.dll" ^
   -r:"%FX%\System.Windows.Forms.dll" -r:"%FX%\System.Drawing.dll" ^
+  -resource:"..\..\assets\onboarding\onboarding-illustration.png",onboarding-illustration.png ^
   -out:"%OUT%\AutoProcessTwin.exe" src\*.cs
 if errorlevel 1 (
     echo קומפילציה נכשלה.

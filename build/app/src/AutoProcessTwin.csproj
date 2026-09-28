@@ -42,4 +42,21 @@
     <Reference Include="System.Security" />
   </ItemGroup>
 
+  <!--
+    Onboarding wizard illustration (local-designer skill, 100% local SVG rendered
+    with sharp - see ../assets/onboarding/meta.json - not Bloom/generative AI).
+    Embedded as a plain assembly manifest resource (LogicalName matches the
+    -resource:...,onboarding-illustration.png flag in build\app\build.cmd, the
+    real build script - this project is raw csc.exe, not MSBuild, so a WPF
+    <Resource>/pack://application:,,, URI would silently do nothing there),
+    loaded via Assembly.GetManifestResourceStream in OnboardingWizard.cs. The
+    800x475 source lives alongside it for future regeneration but is not
+    embedded here.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\assets\onboarding\onboarding-illustration.png">
+      <LogicalName>onboarding-illustration.png</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

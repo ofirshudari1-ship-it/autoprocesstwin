@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace AutoProcessTwin
 {
@@ -171,10 +172,59 @@ namespace AutoProcessTwin
             return b;
         }
 
+        // Welcome-page illustration (local-designer skill, 100% local SVG rendered
+        // with sharp - see ../assets/onboarding/meta.json - not Bloom/generative AI).
+        // Transparent background, so it is placed directly on the page rather than
+        // in a fixed-color card - it already reads correctly on both the light and
+        // dark theme background without needing a framing box.
+        //
+        // This project is built by build\app\build.cmd with raw csc.exe (no MSBuild,
+        // see the comment at the top of that file), not by AutoProcessTwin.csproj -
+        // so the WPF-specific pack://application:,,, resource pipeline (which needs
+        // MSBuild's PresentationBuildTasks to generate a .g.resources dictionary)
+        // never runs against the real shipped build and would silently return null
+        // here. Instead the PNG is embedded as a plain assembly manifest resource -
+        // build.cmd's csc invocation has a matching -resource:...,onboarding-illustration.png
+        // - and loaded back the same way, which works identically whether compiled
+        // via build.cmd or via `dotnet build` on the .csproj (EmbeddedResource there
+        // uses the same LogicalName).
+        private static UIElement BuildWelcomeIllustration()
+        {
+            BitmapFrame frame;
+            try
+            {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                using (var stream = asm.GetManifestResourceStream("onboarding-illustration.png"))
+                {
+                    if (stream == null) return null;
+                    frame = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                }
+            }
+            catch
+            {
+                // Missing/corrupt resource must never block the onboarding flow -
+                // the page still works fine with just the title and body text.
+                return null;
+            }
+
+            var image = new Image
+            {
+                Source = frame,
+                Height = 120,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 4, 0, 16),
+            };
+            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+            return image;
+        }
+
         // ---------- Page 1: מה זה כן עושה, מה זה לא עושה ----------
         private Border BuildWelcomePage()
         {
             var stack = new StackPanel();
+            var illustration = BuildWelcomeIllustration();
+            if (illustration != null) stack.Children.Add(illustration);
             stack.Children.Add(PageTitle("ברוך הבא ל-AutoProcess Twin 👋"));
             stack.Children.Add(Body(
                 "זה סייען שמקליט אילו אפליקציות אתה עובד איתן במהלך היום, ומכין לך " +

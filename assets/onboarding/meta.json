@@ -1,0 +1,11 @@
+{
+  "file": "onboarding-illustration.png",
+  "source": "onboarding-illustration-source.png",
+  "dimensions": "800x475",
+  "generated_by": "local-designer skill (100% local SVG rendered with sharp, no generative AI, no Bloom credits used)",
+  "generated_date": "2026-09-29",
+  "palette_source": "assets/BRAND.md + build/app/src/Theme.cs (emerald accent #10B981/#34D399 on a transparent background so it adapts to both the light and dark theme card it sits in)",
+  "usage": "Embedded WPF resource shown on the OnboardingWizard welcome page (build/app/src/OnboardingWizard.cs), not the marketing site.",
+  "alt_en": "Three repeated everyday tasks (file transfer, CRM record, copy-paste) connected by a repeat loop, with a magnifying glass confirming the detected pattern with a checkmark",
+  "alt_he": "שלוש פעולות יומיומיות חוזרות (העברת קובץ, רשומת CRM, העתק-הדבק) מחוברות בלולאת חזרה, עם זכוכית מגדלת שמאשרת את הדפוס שזוהה בסימן וי"
+}
