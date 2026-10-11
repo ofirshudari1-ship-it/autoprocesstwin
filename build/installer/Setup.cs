@@ -302,7 +302,7 @@ namespace AutoProcessTwinSetup
     public class SetupForm : Form
     {
         public const string AppName = "AutoProcess Twin";
-        public const string AppVersion = "0.5.9";
+        public const string AppVersion = "0.5.10";
         public const string ExeFileName = "AutoProcessTwin.exe";
         public const string ShortcutFileName = "AutoProcess Twin.lnk";
         private const string InstallDirName = "AutoProcessTwin";
@@ -553,18 +553,29 @@ namespace AutoProcessTwinSetup
                 }
             }
 
-            if (Process.GetProcessesByName("AutoProcessTwin").Length > 0)
+            // 0.5.10: האפליקציה קוראת ל-RequestExit() מיד אחרי שהיא מפעילה אותנו, אבל
+            // בקשת ה-UAC לוקחת כמה שניות והיציאה הנקייה (עצירת הקלטה, שחרור
+            // hotkey/tray) עוד כמה - עד 0.5.9 בדקנו פעם אחת ומיד החזרנו שגיאה 3.
+            // עכשיו ממתינים עד 45 שניות שהתהליך ייסגר, ואז מסיימים תהליכי node
+            // יתומים של ה-agent מתיקיית ההתקנה (הם נועלים קבצי .node בזמן הדריסה).
+            if (!WaitForAppToExit(TimeSpan.FromSeconds(45)))
             {
-                Console.WriteLine("ERROR AutoProcessTwin.exe is still running - cannot silently overwrite its own files. " +
-                    "The caller (SelfUpdater) is expected to stop the app before launching this installer; " +
-                    "if this fires, something else is running a second copy.");
+                string msg = "AutoProcessTwin.exe is still running - cannot silently overwrite its own files.";
+                Console.WriteLine("ERROR " + msg);
+                WriteUpdateFailedMarker(msg);
                 return 3;
             }
 
             try
             {
                 var state = DetectInstallState();
-                string exePath = PerformInstall(state.InstallDir, true, true);
+                // 0.5.10: בעדכון שקט משמרים את בחירת המשתמש - לא יוצרים מחדש קיצור
+                // שולחן עבודה שהוא מחק (עד 0.5.9 כל עדכון החזיר אותו).
+                string desktopLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ShortcutFileName);
+                string startLnk = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), ShortcutFileName);
+                bool wantDesktop = !state.AlreadyInstalled || File.Exists(desktopLnk);
+                bool wantStart = !state.AlreadyInstalled || File.Exists(startLnk);
+                string exePath = PerformInstall(state.InstallDir, wantDesktop, wantStart);
                 if (!string.IsNullOrEmpty(state.LegacyInstallDir))
                 {
                     CleanupLegacyInstall(state.LegacyInstallDir);
@@ -573,14 +584,75 @@ namespace AutoProcessTwinSetup
 
                 if (relaunchAfter)
                 {
-                    try { Process.Start(exePath); } catch { /* best-effort - not fatal to the update itself */ }
+                    LaunchDeElevated(exePath); // best-effort - not fatal to the update itself
                 }
                 return 0;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("ERROR " + ex.Message);
+                WriteUpdateFailedMarker("Silent install failed: " + ex.GetType().Name + ": " + ex.Message);
                 return 1;
+            }
+        }
+
+        // ממתין שכל תהליכי AutoProcessTwin ייסגרו; אחרי שהם נסגרו (או אם הזמן
+        // נגמר) מנקה גם node.exe יתומים שרצים מתיקיית ההתקנה. מחזיר false אם
+        // האפליקציה עדיין חיה בסוף ההמתנה.
+        private static bool WaitForAppToExit(TimeSpan timeout)
+        {
+            var deadline = DateTime.UtcNow + timeout;
+            while (Process.GetProcessesByName("AutoProcessTwin").Length > 0 && DateTime.UtcNow < deadline)
+                System.Threading.Thread.Sleep(250);
+            if (Process.GetProcessesByName("AutoProcessTwin").Length > 0) return false;
+
+            try
+            {
+                string installDir = DetectInstallState().InstallDir;
+                foreach (var node in Process.GetProcessesByName("node"))
+                {
+                    try
+                    {
+                        string path = node.MainModule.FileName;
+                        if (path != null && path.StartsWith(installDir, StringComparison.OrdinalIgnoreCase))
+                        {
+                            node.Kill();
+                            node.WaitForExit(3000);
+                        }
+                    }
+                    catch { /* תהליך אחר / אין הרשאה - לא שלנו */ }
+                    finally { node.Dispose(); }
+                }
+            }
+            catch { }
+            return true;
+        }
+
+        // אותו נתיב ש-MainWindow.ReportPendingUpdateFailureIfAny קורא בהפעלה הבאה.
+        private static void WriteUpdateFailedMarker(string message)
+        {
+            try
+            {
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AutoProcessTwin");
+                Directory.CreateDirectory(dir);
+                File.WriteAllText(Path.Combine(dir, "update-failed.txt"), DateTime.UtcNow.ToString("u") + " " + message);
+            }
+            catch { }
+        }
+
+        // הפעלה מחדש *בלי הרשאות מנהל*: ה-Setup רץ מורם (UAC), ו-Process.Start
+        // ישיר היה מריץ את האפליקציה כ-admin - drag&drop מ-Explorer נחסם (UIPI),
+        // והקבצים שהיא כותבת נוצרים בבעלות מורמת. explorer.exe מפעיל את הקובץ
+        // ברמת ההרשאות של המשתמש הרגיל.
+        private static void LaunchDeElevated(string exePath)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", "\"" + exePath + "\"") { UseShellExecute = false });
+            }
+            catch
+            {
+                try { Process.Start(exePath); } catch { }
             }
         }
 
@@ -889,6 +961,9 @@ namespace AutoProcessTwinSetup
         // could prompt about on first run; adding the rule here prevents that popup.
         private static void AddFirewallRule(string exePath)
         {
+            // 0.5.10: מוחקים קודם כל כלל בשם הזה - בלי זה כל עדכון הוסיף עוד כלל
+            // זהה (שמצטבר לנצח, גם אחרי הסרה).
+            RunNetsh("advfirewall firewall delete rule name=\"AutoProcess Twin\"");
             try
             {
                 var p = new Process();
@@ -898,6 +973,21 @@ namespace AutoProcessTwinSetup
                     + " dir=in action=allow"
                     + " program=\"" + exePath + "\""
                     + " enable=yes profile=private,domain";
+                p.StartInfo.CreateNoWindow = true;
+                p.StartInfo.UseShellExecute = false;
+                p.Start();
+                p.WaitForExit(5000);
+            }
+            catch { }
+        }
+
+        private static void RunNetsh(string args)
+        {
+            try
+            {
+                var p = new Process();
+                p.StartInfo.FileName = "netsh";
+                p.StartInfo.Arguments = args;
                 p.StartInfo.CreateNoWindow = true;
                 p.StartInfo.UseShellExecute = false;
                 p.Start();

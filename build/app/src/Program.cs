@@ -79,6 +79,13 @@ namespace AutoProcessTwin
                 return SelfTest.Run();
             }
 
+            // 0.5.10: בדיקות יחידה למסלול העדכון (בלי רשת, בלי UI, בלי לגעת בלוג
+            // או בקונפיג של המשתמש) - מדפיס ל-stdout, קוד יציאה 0 = הכל עבר.
+            if (args.Length > 0 && args[0] == "--update-selftest")
+            {
+                return UpdateSelfTest.Run();
+            }
+
             // מיגרציית דאטה חד-פעמית (config/data/reports מהתקנות ישנות ליד
             // ה-exe -> %LOCALAPPDATA%\AutoProcessTwin). בלי תלות ב-UI, מוקדם
             // ככל האפשר - MainWindow/ProcessManager כבר מצפים ל-UserDataRoot.
@@ -170,6 +177,15 @@ namespace AutoProcessTwin
                 // ומטה שעודכנו במקום (ראה MigrateLegacyDataIfNeeded).
                 try { Registry.LocalMachine.DeleteSubKeyTree(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\" + RegistryKeyName, false); } catch { }
                 try { Registry.CurrentUser.DeleteSubKeyTree(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\" + RegistryKeyName, false); } catch { }
+
+                // 0.5.10: מסירים גם את כלל ה-Firewall ש-Setup הוסיף (נשאר יתום בעבר).
+                try
+                {
+                    var fw = Process.Start(new ProcessStartInfo("netsh", "advfirewall firewall delete rule name=\"AutoProcess Twin\"")
+                        { CreateNoWindow = true, UseShellExecute = false });
+                    if (fw != null) fw.WaitForExit(5000);
+                }
+                catch { }
 
                 // מתזמן מחיקת התיקייה אחרי שהתהליך הזה משחרר את הנעילה על עצמו
                 // (EXE רץ לא יכול למחוק את התיקייה שהוא נמצא בה מיד).

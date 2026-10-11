@@ -18,7 +18,7 @@ namespace AutoProcessTwin
 {
     public class MainWindow : Window
     {
-        public const string AppVersion = "0.5.9";
+        public const string AppVersion = "0.5.10";
 
         private readonly RecorderProcess _recorder = new RecorderProcess();
         private readonly List<string> _logLines = new List<string>();
@@ -98,6 +98,14 @@ namespace AutoProcessTwin
         private CheckBox _autoUpdateBox;
         private Button _updateNowBtn;
         private bool _updateInProgress;
+        // 0.5.10: מתזמן עדכונים מחזורי + שער "רגע בטוח" (ר' UpdateGate.cs).
+        private System.Windows.Threading.DispatcherTimer _updateTimer;
+        private System.Windows.Threading.DispatcherTimer _installGateTimer;
+        private string _readyInstallerPath;
+        private string _readyInstallerVersion;
+        private string _notifiedUpdateVersion;
+        private DateTime _autoInstallBlockedUntilUtc = DateTime.MinValue;
+        private bool _sessionEnding;
 
         // Tray (§12.1, §12.2 STANDARDS)
         private System.Windows.Forms.NotifyIcon _tray;
@@ -197,6 +205,10 @@ namespace AutoProcessTwin
             RestoreWindowState();
             Closing += OnWindowClosing;
 
+            // 0.5.10: אל תתחיל התקנת עדכון אוטומטית בזמן כיבוי/התנתקות של Windows
+            // (STANDARDS 11.1) - התקנה שנקטעת באמצע כתיבה משאירה התקנה שבורה.
+            try { Application.Current.SessionEnding += (s2, e2) => { _sessionEnding = true; }; } catch { }
+
             // Global hotkey (§12.4) - needs the real HWND, only available once the
             // window handle exists. Never hardcoded: only registers what the user
             // configured in Settings, and only if they explicitly enabled it.
@@ -208,6 +220,7 @@ namespace AutoProcessTwin
                 MaybeShowOnboarding();
                 if (Json.GetBool(_appConfig, "auto_record", false) && !_recorder.IsRunning)
                     ToggleRecording();
+                ReportPendingUpdateFailureIfAny();
                 MaybeCheckForUpdates();
 
                 // "Start minimized" (Windows-integration option, §12.1 explicitly
@@ -219,42 +232,172 @@ namespace AutoProcessTwin
             };
         }
 
-        // נדחה ~5 שניות כדי לא להתחרות בעומס האתחול (onboarding/recorder/
-        // סטטוס ראשוני), async כדי לא לחסום את ה-UI thread, ופעם אחת בלבד
-        // לכל הרצת אפליקציה (לא בכל 30ms auto-refresh, לא בכל פתיחת טאב).
+        // 0.5.10: בדיקה ברקע ~5 שניות אחרי העלייה (לא מתחרה בעומס האתחול) ואז
+        // כל UpdateGate.CheckInterval (6 שעות) כל עוד האפליקציה פתוחה - עד 0.5.9
+        // הבדיקה רצה פעם אחת בלבד לכל הרצה, כך שמי שמשאיר את התוכנה במגש
+        // שבועות (השימוש הרגיל) לא היה מתעדכן אף פעם. המתזמן מתחיל פעם אחת;
+        // הדגלים check_for_updates / auto_update_enabled נקראים מחדש בכל סבב,
+        // כך ששינוי בהגדרות נכנס לתוקף בלי הפעלה מחדש.
         private async void MaybeCheckForUpdates()
         {
             if (_updateCheckDoneThisSession) return;
-            if (!Json.GetBool(_appConfig, "check_for_updates", true)) return;
             _updateCheckDoneThisSession = true;
 
             try { await Task.Delay(5000); } catch { return; }
 
-            UpdateChecker.UpdateInfo info = null;
+            await RunBackgroundUpdateCycleAsync();
+
+            _updateTimer = new System.Windows.Threading.DispatcherTimer { Interval = UpdateGate.CheckInterval };
+            _updateTimer.Tick += async (s, e) => await RunBackgroundUpdateCycleAsync();
+            _updateTimer.Start();
+        }
+
+        // סבב אחד: בדיקה -> (אם הוגדר עדכון אוטומטי) הורדה+אימות ברקע -> המתנה
+        // ל"רגע בטוח" (UpdateGate) -> התקנה שקטה. לעולם לא זורק, לעולם לא חוסם
+        // את ה-UI, וכל כשל נרשם ל-update.log ונוסה שוב בסבב הבא.
+        private async Task RunBackgroundUpdateCycleAsync()
+        {
             try
             {
-                info = await Task.Run(new Func<UpdateChecker.UpdateInfo>(
-                    () => UpdateChecker.CheckSync(AppVersion)));
+                if (_updateInProgress) return;
+                if (!Json.GetBool(_appConfig, "check_for_updates", true)) return;
+
+                // כבר יש installer מאומת מוכן - לא מורידים שוב, רק ממשיכים להמתין לרגע בטוח.
+                if (_readyInstallerPath != null && System.IO.File.Exists(_readyInstallerPath))
+                {
+                    if (Json.GetBool(_appConfig, "auto_update_enabled", true)) StartInstallGate();
+                    return;
+                }
+
+                UpdateChecker.UpdateInfo info = null;
+                try
+                {
+                    info = await Task.Run(new Func<UpdateChecker.UpdateInfo>(
+                        () => UpdateChecker.CheckSync(AppVersion)));
+                }
+                catch (Exception ex) { UpdateLog.Write("check threw: " + ex.Message); }
+
+                if (info == null) return;
+                _pendingUpdate = info;
+                UpdateLog.Write("update available: " + info.Version + " (installed " + AppVersion + ")");
+
+                bool auto = Json.GetBool(_appConfig, "auto_update_enabled", true);
+                if (!auto || DateTime.UtcNow < _autoInstallBlockedUntilUtc)
+                {
+                    NotifyUpdateOnce(info);
+                    return;
+                }
+
+                var download = await Task.Run(new Func<SelfUpdater.DownloadOutcome>(
+                    () => SelfUpdater.DownloadInstaller(info)));
+                if (download == null || download.Result != SelfUpdater.DownloadResult.Ok)
+                {
+                    // נכשל (רשת/אימות) - מתריעים פעם אחת על הגרסה, ומנסים שוב בסבב הבא.
+                    NotifyUpdateOnce(info);
+                    return;
+                }
+
+                _readyInstallerPath = download.FilePath;
+                _readyInstallerVersion = info.Version;
+                SetUpdateStatus(Strings.Language == "he"
+                    ? ("עדכון " + info.Version + " הורד ואומת - יותקן אוטומטית כשלא תהיו על המחשב.")
+                    : ("Update " + info.Version + " downloaded and verified - it will install automatically while you're away."));
+                StartInstallGate();
             }
-            catch { /* שקט - ר' UpdateChecker.CheckSync */ }
-
-            if (info == null) return;
-            _pendingUpdate = info;
-
-            // Opt-in silent path (Settings > "Automatically download and install
-            // updates", default OFF): instead of the passive tray notification,
-            // go straight for a full self-update. Still falls back to
-            // NotifyUpdateAvailable on any failure - see PerformSelfUpdate.
-            if (Json.GetBool(_appConfig, "auto_update_enabled", false))
+            catch (Exception ex)
             {
-                // Already on the UI thread here (WPF resumes async continuations
-                // on the captured SynchronizationContext after each await above) -
-                // no Dispatcher.BeginInvoke needed, same as ManualCheckForUpdates.
-                PerformSelfUpdate(info, isAutomatic: true);
-                return;
+                UpdateLog.Write("update cycle failed: " + ex.GetType().Name + ": " + ex.Message);
             }
+        }
 
+        // Setup.cs (מצב שקט) כותב %APPDATA%\AutoProcessTwin\update-failed.txt כשההתקנה
+        // נכשלה אחרי שהאפליקציה כבר יצאה - אף אחד לא היה שם לראות את קוד היציאה.
+        // בהפעלה הבאה קוראים את הסימון, רושמים ל-update.log ומראים הודעת מגש.
+        private void ReportPendingUpdateFailureIfAny()
+        {
+            try
+            {
+                string marker = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "AutoProcessTwin", "update-failed.txt");
+                if (!System.IO.File.Exists(marker)) return;
+                string details = System.IO.File.ReadAllText(marker).Trim();
+                try { System.IO.File.Delete(marker); } catch { }
+                UpdateLog.Write("previous silent install failed: " + details);
+                if (_tray != null)
+                {
+                    _tray.ShowBalloonTip(6000, "AutoProcess Twin",
+                        Strings.Language == "he"
+                            ? "העדכון האוטומטי הקודם לא הושלם. אפשר לנסות שוב מ'עדכן עכשיו' או להוריד ידנית."
+                            : "The previous automatic update did not complete. Try 'Update Now' or download it manually.",
+                        System.Windows.Forms.ToolTipIcon.Warning);
+                }
+            }
+            catch { }
+        }
+
+        // התראת "יש עדכון" פעם אחת בלבד לכל גרסה (בלי הצפה בכל סבב של 6 שעות).
+        private void NotifyUpdateOnce(UpdateChecker.UpdateInfo info)
+        {
+            if (info == null || _notifiedUpdateVersion == info.Version) return;
+            _notifiedUpdateVersion = info.Version;
             NotifyUpdateAvailable(info);
+        }
+
+        private void StartInstallGate()
+        {
+            if (_installGateTimer != null) return;
+            _installGateTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+            _installGateTimer.Tick += (s, e) => TryInstallReadyUpdate();
+            _installGateTimer.Start();
+        }
+
+        private void StopInstallGate()
+        {
+            if (_installGateTimer == null) return;
+            _installGateTimer.Stop();
+            _installGateTimer = null;
+        }
+
+        // רץ כל 30 שניות כל עוד יש installer מאומת שממתין. מתקין רק ברגע בטוח
+        // (UpdateGate.IsSafeToInstall: משתמש idle 3 דק'+, בלי כיבוי Windows).
+        private void TryInstallReadyUpdate()
+        {
+            try
+            {
+                if (_exitRequested || _updateInProgress) return;
+                if (!Json.GetBool(_appConfig, "auto_update_enabled", true)) { StopInstallGate(); return; }
+                if (_readyInstallerPath == null || !System.IO.File.Exists(_readyInstallerPath))
+                {
+                    _readyInstallerPath = null;
+                    StopInstallGate();
+                    return;
+                }
+                if (!UpdateGate.IsSafeToInstall(UpdateGate.GetIdleSeconds(), _sessionEnding, _updateInProgress,
+                        DateTime.UtcNow, _autoInstallBlockedUntilUtc))
+                    return;
+
+                StopInstallGate();
+                UpdateLog.Write("safe moment reached (user idle) - installing " + _readyInstallerVersion);
+                var launch = SelfUpdater.LaunchSilentInstaller(_readyInstallerPath);
+                if (launch.Result == SelfUpdater.LaunchResult.Ok)
+                {
+                    RequestExit();
+                    return;
+                }
+
+                // UAC נדחה / ההפעלה נכשלה: לא מנדנדים שוב ושוב - מנוחה של 24 שעות
+                // מההתקנה האוטומטית (הכפתור "עדכן עכשיו" נשאר זמין), והתראה פעם אחת.
+                _autoInstallBlockedUntilUtc = DateTime.UtcNow.AddHours(24);
+                _readyInstallerPath = null;
+                SetUpdateStatus(launch.Result == SelfUpdater.LaunchResult.ElevationDeclined
+                    ? Strings.MsgUpdateElevationDeclined
+                    : Strings.MsgUpdateLaunchFailed);
+                if (_pendingUpdate != null) NotifyUpdateOnce(_pendingUpdate);
+            }
+            catch (Exception ex)
+            {
+                UpdateLog.Write("install gate failed: " + ex.GetType().Name + ": " + ex.Message);
+            }
         }
 
         // התראה לא-חוסמת: balloon tip מה-tray (כבר קיים לכל הרצה, §12.1/12.2)
@@ -408,6 +551,9 @@ namespace AutoProcessTwin
                             case SelfUpdater.DownloadResult.NoAssetUrl: msg = Strings.MsgUpdateNoAsset; break;
                             case SelfUpdater.DownloadResult.DiskError: msg = Strings.MsgUpdateDiskError; break;
                             case SelfUpdater.DownloadResult.SizeMismatch: msg = Strings.MsgUpdateSizeMismatch; break;
+                            case SelfUpdater.DownloadResult.NotAnInstaller:
+                            case SelfUpdater.DownloadResult.HashMismatch:
+                            case SelfUpdater.DownloadResult.InsecureUrl: msg = Strings.MsgUpdateVerifyFailed; break;
                         }
                     }
                     SetUpdateStatus(msg);
@@ -1074,7 +1220,7 @@ namespace AutoProcessTwin
             var startMinimized = Json.GetBool(_appConfig, "start_minimized", false);
             var autoRecord = Json.GetBool(_appConfig, "auto_record", false);
             var checkUpdates = Json.GetBool(_appConfig, "check_for_updates", true);
-            var autoUpdate = Json.GetBool(_appConfig, "auto_update_enabled", false);
+            var autoUpdate = Json.GetBool(_appConfig, "auto_update_enabled", true);
             var hotkeyEnabled = Json.GetBool(_appConfig, "hotkey_enabled", false);
             var hotkeyMod = Json.GetString(_appConfig, "hotkey_modifiers", "Ctrl+Alt");
             var hotkeyKey = Json.GetString(_appConfig, "hotkey_key", "R");

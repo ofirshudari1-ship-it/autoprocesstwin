@@ -33,7 +33,7 @@ AutoProcessTwin runs quietly in the background on your Windows PC, keeping track
 
 ## Automatic updates
 
-AutoProcessTwin checks for new versions automatically and lets you know when one is available, so you don't need to manually track releases. You can also always grab the latest version yourself from the [releases page](https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases).
+AutoProcessTwin updates itself in the background (setting **on by default**, Settings > "Automatically download and install updates"). It checks GitHub a few seconds after launch and every ~6 hours, downloads the installer, verifies it (size, Windows-executable type, and the sha256 GitHub publishes for the release), and installs it silently only after you have been away from the PC for a few minutes; the app then reopens by itself. Because it installs to Program Files, Windows shows a UAC prompt for each update - if you decline, nothing is installed and it will not ask again for 24 hours. With the setting off you only get a notification. Failures are logged to `%APPDATA%\AutoProcessTwin\logs\update.log`. You can also always grab the latest version yourself from the [releases page](https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases).
 
 ## Privacy
 

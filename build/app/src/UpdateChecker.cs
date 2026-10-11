@@ -36,6 +36,26 @@ namespace AutoProcessTwin
             // כדי לתפוס הורדה חתוכה/נכשלת).
             public string AssetDownloadUrl;
             public long AssetSize;
+            // 0.5.10: sha256 (hex, lowercase) של ה-asset כפי ש-GitHub API מחזיר
+            // בשדה "digest" ("sha256:<hex>") - null אם ה-release ישן ואין digest.
+            // SelfUpdater מאמת מולו לפני הרצה (בנוסף לגודל ולחתימת MZ).
+            public string AssetSha256;
+        }
+
+        // TLS 1.2/1.3 חובה מול api.github.com. אפליקציה שמקומפלת ב-csc גולמי
+        // (בלי TargetFrameworkAttribute) יכולה לרשת ברירת מחדל ישנה של .NET
+        // Framework (SSL3/TLS1.0) ואז כל קריאה ל-GitHub נכשלת בשקט - מוסיפים
+        // במפורש, בלי להסיר פרוטוקולים שהמערכת כבר מאפשרת.
+        public static void EnsureModernTls()
+        {
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072 | (SecurityProtocolType)12288;
+            }
+            catch
+            {
+                try { ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; } catch { }
+            }
         }
 
         // סינכרוני בכוונה - הקורא (MainWindow) עוטף ב-Task.Run, בדיוק כמו
@@ -44,6 +64,7 @@ namespace AutoProcessTwin
         {
             try
             {
+                EnsureModernTls();
                 var req = (HttpWebRequest)WebRequest.Create(ApiUrl);
                 // GitHub REST API דוחה בקשות בלי User-Agent (403) - זו לא
                 // בקשה מאומתת, רק header תקני.
@@ -57,53 +78,80 @@ namespace AutoProcessTwin
                 using (var stream = resp.GetResponseStream())
                 using (var reader = new StreamReader(stream, Encoding.UTF8))
                 {
-                    string json = reader.ReadToEnd();
-                    var serializer = new JavaScriptSerializer();
-                    serializer.MaxJsonLength = int.MaxValue;
-                    var data = serializer.DeserializeObject(json) as Dictionary<string, object>;
-                    if (data == null) return null;
-
-                    string tag = Json.GetString(data, "tag_name", null);
-                    if (string.IsNullOrEmpty(tag)) return null;
-
-                    string htmlUrl = Json.GetString(data, "html_url", ReleasesPageUrl);
-                    string latest = tag.TrimStart('v', 'V');
-
-                    if (!IsNewer(latest, currentVersion)) return null;
-
-                    string assetUrl = null;
-                    long assetSize = 0;
-                    foreach (var item in Json.AsList(data.ContainsKey("assets") ? data["assets"] : null))
-                    {
-                        var asset = item as Dictionary<string, object>;
-                        if (asset == null) continue;
-                        string name = Json.GetString(asset, "name", "");
-                        // ה-installer בלבד - לא source zip/tarball שGitHub מצרף אוטומטית.
-                        if (name.StartsWith("AutoProcessTwin-Setup-", StringComparison.OrdinalIgnoreCase) &&
-                            name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                        {
-                            assetUrl = Json.GetString(asset, "browser_download_url", null);
-                            assetSize = (long)Json.GetNumber(asset, "size", 0);
-                            break;
-                        }
-                    }
-
-                    return new UpdateInfo
-                    {
-                        Version = latest,
-                        HtmlUrl = htmlUrl,
-                        AssetDownloadUrl = assetUrl,
-                        AssetSize = assetSize
-                    };
+                    return ParseReleaseJson(reader.ReadToEnd(), currentVersion);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // שקט לגמרי בכוונה: אין אינטרנט, GitHub API למטה, rate-limit
+                // שקט כלפי המשתמש בכוונה: אין אינטרנט, GitHub API למטה, rate-limit
                 // (60 בקשות/שעה ל-IP לא-מאומת), או שעדיין אין release - אף
-                // אחד מהם לא באג ואף אחד לא צריך לבלבל את המשתמש.
+                // אחד מהם לא באג. אבל כן נרשם ל-update.log (0.5.10) כדי שאפשר
+                // יהיה לאבחן "למה לא התעדכן" - בעבר הכשל נבלע לגמרי.
+                UpdateLog.Write("check failed: " + ex.GetType().Name + ": " + ex.Message);
                 return null;
             }
+        }
+
+        // פירוק תגובת releases/latest - פונקציה טהורה (בלי רשת) כדי שאפשר
+        // לבדוק אותה ב---update-selftest. מחזירה null אם אין עדכון חדש,
+        // או אם ה-release הוא draft/pre-release.
+        public static UpdateInfo ParseReleaseJson(string json, string currentVersion)
+        {
+            var serializer = new JavaScriptSerializer();
+            serializer.MaxJsonLength = int.MaxValue;
+            var data = serializer.DeserializeObject(json) as Dictionary<string, object>;
+            if (data == null) return null;
+
+            if (Json.GetBool(data, "draft", false) || Json.GetBool(data, "prerelease", false)) return null;
+
+            string tag = Json.GetString(data, "tag_name", null);
+            if (string.IsNullOrEmpty(tag)) return null;
+
+            string htmlUrl = Json.GetString(data, "html_url", ReleasesPageUrl);
+            string latest = tag.TrimStart('v', 'V');
+
+            if (!IsNewer(latest, currentVersion)) return null;
+
+            string assetUrl = null;
+            string assetSha = null;
+            long assetSize = 0;
+            foreach (var item in Json.AsList(data.ContainsKey("assets") ? data["assets"] : null))
+            {
+                var asset = item as Dictionary<string, object>;
+                if (asset == null) continue;
+                string name = Json.GetString(asset, "name", "");
+                // ה-installer בלבד - לא source zip/tarball שGitHub מצרף אוטומטית.
+                if (name.StartsWith("AutoProcessTwin-Setup-", StringComparison.OrdinalIgnoreCase) &&
+                    name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    assetUrl = Json.GetString(asset, "browser_download_url", null);
+                    assetSize = (long)Json.GetNumber(asset, "size", 0);
+                    assetSha = ParseDigest(Json.GetString(asset, "digest", null));
+                    break;
+                }
+            }
+
+            return new UpdateInfo
+            {
+                Version = latest,
+                HtmlUrl = htmlUrl,
+                AssetDownloadUrl = assetUrl,
+                AssetSize = assetSize,
+                AssetSha256 = assetSha
+            };
+        }
+
+        // "sha256:ABCD..." -> "abcd..." ; כל פורמט אחר/ריק/לא-hex באורך 64 -> null.
+        public static string ParseDigest(string digest)
+        {
+            if (string.IsNullOrEmpty(digest)) return null;
+            const string prefix = "sha256:";
+            if (!digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return null;
+            string hex = digest.Substring(prefix.Length).Trim().ToLowerInvariant();
+            if (hex.Length != 64) return null;
+            foreach (char c in hex)
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return null;
+            return hex;
         }
 
         // major.minor.patch בלבד (בלי pre-release tags) - מספיק לצרכי הפרויקט.

@@ -7,6 +7,11 @@ cd /d "%~dp0"
 
 set FX=C:\Windows\Microsoft.NET\Framework64\v4.0.30319
 set CSC=%FX%\csc.exe
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "(Get-Content '%~dp0..\..\version.json' -Raw | ConvertFrom-Json).version"`) do set VER=%%V
+if "%VER%"=="" (
+    echo version.json לא נקרא.
+    exit /b 1
+)
 
 if not exist "%CSC%" (
     echo csc.exe לא נמצא ב-%FX%.
@@ -27,12 +32,12 @@ if errorlevel 1 (
 )
 
 echo.
-echo === שלב 3: מקמפל את AutoProcessTwin-Setup-0.5.9.exe ===
+echo === שלב 3: מקמפל את AutoProcessTwin-Setup-%VER%.exe ===
 "%CSC%" -nologo -target:winexe -win32icon:..\app\AppIcon.ico ^
   -r:System.Windows.Forms.dll -r:System.Drawing.dll ^
   -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll ^
   -resource:payload.zip,AutoProcessTwinSetup.payload.zip ^
-  -out:"..\..\AutoProcessTwin-Setup-0.5.9.exe" Setup.cs
+  -out:"..\..\AutoProcessTwin-Setup-%VER%.exe" Setup.cs
 if errorlevel 1 (
     echo קומפילציית ההתקנה נכשלה.
     exit /b 1
@@ -43,12 +48,12 @@ del payload.zip
 echo.
 echo === שלב 4: מנקה קבצי installer ישנים בשורש ===
 for %%F in (..\..\AutoProcessTwin-Setup-*.exe) do (
-    if /I not "%%~nxF"=="AutoProcessTwin-Setup-0.5.9.exe" (
+    if /I not "%%~nxF"=="AutoProcessTwin-Setup-%VER%.exe" (
         echo מוחק ישן: %%~nxF
         del /f /q "%%F"
     )
 )
 
 echo.
-echo מוכן: ..\..\AutoProcessTwin-Setup-0.5.9.exe
+echo מוכן: ..\..\AutoProcessTwin-Setup-%VER%.exe
 endlocal

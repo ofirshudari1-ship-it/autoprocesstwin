@@ -121,7 +121,7 @@
       <a class="btn btn-primary" href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases/latest" data-t="hero_cta_download">Download for Windows — free</a>
       <a class="btn btn-ghost" href="#how" data-t="hero_cta_how">See how it works</a>
     </div>
-    <p class="version-note" data-t="hero_version_note">Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically</p>
+    <p class="version-note" data-t="hero_version_note">Version 0.5.10 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · updates itself in the background</p>
     <img class="hero-img" src="../assets/marketing/hero.webp" data-t-alt="hero_img_alt" alt="A dashboard window highlighting one repeated task pattern with a magnifying glass and checkmark, surrounded by icons for file transfers, CRM records and copy-paste work feeding into an automation recommendation card" width="1000" height="1000" loading="lazy">
   </section>
 
@@ -168,25 +168,25 @@
   <!-- 4b. Automatic updates -->
   <section id="updates">
     <h2 data-t="updates_h2">Automatic updates</h2>
-    <p class="section-lead" data-t="updates_p">The app checks GitHub for a newer version shortly after launch (at most once per session) and lets you know with a quiet notification — it never re-downloads or reinstalls anything for you, and it never phones home for anything besides that one version check. You can turn the check off in Settings, or trigger it manually from the Help tab. The source of truth for every release is <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin" target="_blank" rel="noopener">github.com/ofirshudari1-ship-it/autoprocesstwin</a>.</p>
+    <p class="section-lead" data-t="updates_p">The app checks GitHub for a newer version a few seconds after launch and then every ~6 hours while it is open. When one is found it downloads the installer in the background, verifies it (file size, Windows-executable type and the sha256 GitHub publishes for the release) and installs it silently only after you have been away from the PC for a few minutes — then reopens itself. Because it installs to Program Files, Windows shows a UAC prompt for every update; if you decline it nothing is installed and it will not ask again for 24 hours. It never phones home for anything besides that version check. You can turn automatic installation (or the check itself) off in Settings, or trigger it manually from the Help tab. The source of truth for every release is <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin" target="_blank" rel="noopener">github.com/ofirshudari1-ship-it/autoprocesstwin</a>.</p>
   </section>
 
   <!-- 4c. Version history -->
   <section id="changelog">
     <h2 data-t="changelog_h2">Version history</h2>
-    <p class="section-lead" data-t="changelog_lead">Full changelog: <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/blob/master/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md on GitHub</a>. Recent highlights:</p>
+    <p class="section-lead" data-t="changelog_lead">Full release notes: <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases" target="_blank" rel="noopener">Release notes on GitHub</a>. Recent highlights:</p>
     <div class="cards">
       <div class="card">
-        <h3 data-t="cl1_h">0.5.3</h3>
-        <p data-t="cl1_p">Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check described above.</p>
+        <h3 data-t="cl1_h">0.5.10</h3>
+        <p data-t="cl1_p">Updates now happen by themselves: checked after launch and every ~6 hours, downloaded and verified in the background (size, file type, sha256), installed silently while you are away, and the app reopens by itself. Setting is on by default.</p>
       </div>
       <div class="card">
-        <h3 data-t="cl2_h">0.5.2</h3>
-        <p data-t="cl2_p">Installer visual polish — themed checkboxes and progress bar in the setup wizard, matching the app's dark-slate + emerald look throughout.</p>
+        <h3 data-t="cl2_h">0.5.6</h3>
+        <p data-t="cl2_p">One-click "Update Now" in the About tab: downloads the installer and runs it silently instead of sending you to the download page.</p>
       </div>
       <div class="card">
-        <h3 data-t="cl3_h">0.5.1</h3>
-        <p data-t="cl3_p">Installer now defaults to Program Files (admin rights/UAC required at install time only) instead of the per-user AppData folder.</p>
+        <h3 data-t="cl3_h">0.5.3</h3>
+        <p data-t="cl3_p">Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check.</p>
       </div>
     </div>
   </section>
@@ -227,7 +227,7 @@
 
     <details>
       <summary data-t="faq7_q">Does it update itself automatically?</summary>
-      <p data-t="faq7_a">No — same report-only principle as pattern detection. A few seconds after launch, once per session, the app makes a single check against the project's public <a href="https://github.com/ofirshudari1-ship-it/autoprocesstwin/releases" target="_blank" rel="noopener">GitHub Releases</a> page. If a newer version is tagged there, you get a quiet, dismissible notification linking to the release notes — nothing is downloaded or installed without you clicking through and choosing to. Any network failure is silent and never interrupts the app.</p>
+      <p data-t="faq7_a">No — same report-only principle as pattern detection. A few seconds after launch and then about every 6 hours, the app makes a single check against the project's public GitHub Releases page. If a newer version is tagged there, it downloads the installer, verifies it (size, file type, sha256) and installs it silently while you are away from the PC; Windows still asks for UAC approval, and you can switch automatic install off in Settings to get a quiet notification only. Any network failure is silent, logged to a local update.log file, and never interrupts the app.</p>
     </details>
   </section>
 
@@ -272,7 +272,7 @@
       hero_cta_download:"Download for Windows — free",
       hero_cta_how:"See how it works",
       hero_img_alt:"A dashboard window highlighting one repeated task pattern with a magnifying glass and checkmark, surrounded by icons for file transfers, CRM records and copy-paste work feeding into an automation recommendation card",
-      hero_version_note:"Version 0.5.2 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · checks for updates automatically",
+      hero_version_note:"Version 0.5.10 · Windows 10/11 · installs to Program Files (admin rights/UAC required) · 100% local, nothing sent anywhere · updates itself in the background",
       how_h2:"What it does, and why it exists",
       how_lead:"Most repetitive work never gets automated because nobody has hard numbers on how much time it actually costs. AutoProcess Twin builds those numbers automatically: it records which app and window title is active every 20 seconds, groups the recurring ones into patterns, and turns that into a monthly picture of where manual work is eating hours — so a manager can decide where automation or AI actually pays off, instead of guessing.",
       how_screenshot:"ASSET · Product screenshot not captured yet — the \"Repeated Actions\" tab (pattern list, category badges, trend arrows) will go here once available.",
@@ -290,15 +290,15 @@
       feat6_h:"Runs entirely on your PC",
       feat6_p:"SQLite database on your machine, no cloud sync, no account. An optional AI summary feature is off by default and only sends aggregated numbers, never screenshots or raw text.",
       updates_h2:"Automatic updates",
-      updates_p:"The app checks GitHub for a newer version shortly after launch (at most once per session) and lets you know with a quiet notification — it never re-downloads or reinstalls anything for you, and it never phones home for anything besides that one version check. You can turn the check off in Settings, or trigger it manually from the Help tab. The source of truth for every release is github.com/ofirshudari1-ship-it/autoprocesstwin.",
+      updates_p:"The app checks GitHub for a newer version a few seconds after launch and then every ~6 hours while it is open. When one is found it downloads the installer in the background, verifies it (file size, Windows-executable type and the sha256 GitHub publishes for the release) and installs it silently only after you have been away from the PC for a few minutes — then reopens itself. Because it installs to Program Files, Windows shows a UAC prompt for every update; if you decline it nothing is installed and it will not ask again for 24 hours. It never phones home for anything besides that version check. You can turn automatic installation (or the check itself) off in Settings, or trigger it manually from the Help tab. The source of truth for every release is github.com/ofirshudari1-ship-it/autoprocesstwin.",
       changelog_h2:"Version history",
-      changelog_lead:"Full changelog: CHANGELOG.md on GitHub. Recent highlights:",
-      cl1_h:"0.5.3",
-      cl1_p:"Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check described above.",
-      cl2_h:"0.5.2",
-      cl2_p:"Installer visual polish — themed checkboxes and progress bar in the setup wizard, matching the app's dark-slate + emerald look throughout.",
-      cl3_h:"0.5.1",
-      cl3_p:"Installer now defaults to Program Files (admin rights/UAC required at install time only) instead of the per-user AppData folder.",
+      changelog_lead:"Full release notes: Release notes on GitHub. Recent highlights:",
+      cl1_h:"0.5.10",
+      cl1_p:"Updates now happen by themselves: checked after launch and every ~6 hours, downloaded and verified in the background (size, file type, sha256), installed silently while you are away, and the app reopens by itself. Setting is on by default.",
+      cl2_h:"0.5.6",
+      cl2_p:"One-click \"Update Now\" in the About tab: downloads the installer and runs it silently instead of sending you to the download page.",
+      cl3_h:"0.5.3",
+      cl3_p:"Moved distribution to a public GitHub repo (releases are now published there) and added the automatic update check.",
       faq_h2:"Questions people actually ask",
       faq1_q:"Is my data sent anywhere, to the cloud or to Claude/OpenAI?",
       faq1_a:"No, by default. Everything — window titles, screenshots, OCR text, the pattern database — stays in a local SQLite file on your computer. There is one optional, off-by-default \"AI summary\" feature; if you turn it on and configure an API key yourself, it sends only aggregated numbers (category, app name, minutes, occurrence count) to the endpoint you configured — never screenshots, never raw window titles, never the API key of anyone but you.",
@@ -313,7 +313,7 @@
       faq6_q:"How do I uninstall it, and does it clean up fully?",
       faq6_a:"Windows Settings → Apps → AutoProcess Twin → Uninstall. It removes the installed files, shortcuts, and its registry entry; you'll be asked separately whether to also delete your recorded data.",
       faq7_q:"Does it update itself automatically?",
-      faq7_a:"No — same report-only principle as pattern detection. A few seconds after launch, once per session, the app makes a single check against the project's public GitHub Releases page. If a newer version is tagged there, you get a quiet, dismissible notification linking to the release notes — nothing is downloaded or installed without you clicking through and choosing to. Any network failure is silent and never interrupts the app.",
+      faq7_a:"No — same report-only principle as pattern detection. A few seconds after launch and then about every 6 hours, the app makes a single check against the project's public GitHub Releases page. If a newer version is tagged there, it downloads the installer, verifies it (size, file type, sha256) and installs it silently while you are away from the PC; Windows still asks for UAC approval, and you can switch automatic install off in Settings to get a quiet notification only. Any network failure is silent, logged to a local update.log file, and never interrupts the app.",
       privacy_h2:"Privacy, in plain terms",
       privacy_badge:"100% local by default",
       privacy_intro:"AutoProcess Twin observes activity on the computer it's installed on, in order to detect repeated manual work. Here is exactly what that means in practice:",
@@ -336,7 +336,7 @@
       hero_cta_download:"הורדה ל-Windows — חינם",
       hero_cta_how:"איך זה עובד",
       hero_img_alt:"חלון דשבורד עם זכוכית מגדלת וסימן וי המדגישים דפוס פעולה חוזר, מוקף באייקונים של העברת קבצים, רשומות CRM והעתק-הדבק שמוזנים לכרטיס המלצת אוטומציה",
-      hero_version_note:"גרסה 0.5.2 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה · בודק עדכונים אוטומטית",
+      hero_version_note:"גרסה 0.5.10 · Windows 10/11 · מותקן ב-Program Files (נדרשות הרשאות מנהל/UAC) · 100% מקומי, שום דבר לא נשלח החוצה · מתעדכן לבד ברקע",
       how_h2:"מה זה עושה, ולמה זה קיים",
       how_lead:"רוב העבודה החוזרת אף פעם לא מקבלת אוטומציה כי אין למי שמחליט מספרים אמיתיים על כמה זמן היא באמת עולה. AutoProcess Twin בונה את המספרים האלה אוטומטית: מתעד איזו אפליקציה וכותרת חלון פעילות כל 20 שניות, מקבץ את מה שחוזר לדפוסים, והופך את זה לתמונה חודשית של איפה עבודה ידנית בולעת שעות — כדי שמנהל יוכל להחליט איפה אוטומציה או AI באמת משתלמים, בלי לנחש.",
       how_screenshot:"נכס · צילום מסך של המוצר עדיין לא צולם — כאן יופיע טאב \"פעולות חוזרות\" (רשימת דפוסים, תגי קטגוריה, חצי מגמה) כשיהיה זמין.",
@@ -354,15 +354,15 @@
       feat6_h:"רץ לגמרי על המחשב שלך",
       feat6_p:"מסד נתונים SQLite על המחשב שלך, בלי סנכרון ענן, בלי חשבון. פיצ'ר סיכום AI אופציונלי כבוי כברירת מחדל ושולח רק מספרים מצטברים, אף פעם לא צילומי מסך או טקסט גולמי.",
       updates_h2:"עדכונים אוטומטיים",
-      updates_p:"האפליקציה בודקת מול GitHub אם יש גרסה חדשה זמן קצר אחרי ההפעלה (לכל היותר פעם אחת בכל הרצה) ומודיעה בהתראה שקטה — היא אף פעם לא מורידה או מתקינה שום דבר בשבילך, ולא שולחת שום מידע חוץ מבדיקת הגרסה הזו. אפשר לכבות את הבדיקה בהגדרות, או להריץ אותה ידנית מטאב העזרה. מקור האמת לכל גרסה הוא github.com/ofirshudari1-ship-it/autoprocesstwin.",
+      updates_p:"האפליקציה בודקת מול GitHub אם יש גרסה חדשה כמה שניות אחרי ההפעלה ואז כל ~6 שעות כל עוד היא פתוחה. כשנמצאת גרסה, היא מורידה את ההתקנה ברקע, מאמתת אותה (גודל הקובץ, סוג קובץ הרצה של Windows וה-sha256 ש-GitHub מפרסם לגרסה) ומתקינה בשקט רק אחרי שלא נגעתם במחשב כמה דקות — ואז נפתחת מחדש. מכיוון שההתקנה היא ל-Program Files, Windows מציג בקשת UAC בכל עדכון; אם תדחו אותה שום דבר לא יותקן ולא נבקש שוב 24 שעות. היא לא שולחת שום מידע חוץ מבדיקת הגרסה הזו. אפשר לכבות את ההתקנה האוטומטית (או את הבדיקה עצמה) בהגדרות, או להריץ אותה ידנית מטאב העזרה. מקור האמת לכל גרסה הוא github.com/ofirshudari1-ship-it/autoprocesstwin.",
       changelog_h2:"היסטוריית גרסאות",
-      changelog_lead:"Changelog מלא: CHANGELOG.md ב-GitHub. עדכונים אחרונים:",
-      cl1_h:"0.5.3",
-      cl1_p:"מעבר ההפצה לריפו ציבורי ב-GitHub (שם מתפרסמות הגרסאות מעכשיו) והוספת בדיקת העדכונים האוטומטית שמתוארת למעלה.",
-      cl2_h:"0.5.2",
-      cl2_p:"ליטוש ויזואלי בתוכנת ההתקנה — checkboxes ו-progress bar בעיצוב אחיד, תואמים למראה הכהה-אמרלד של האפליקציה בכל מקום אחר.",
-      cl3_h:"0.5.1",
-      cl3_p:"ברירת המחדל של ההתקנה עברה ל-Program Files (הרשאות מנהל/UAC נדרשות רק בזמן ההתקנה) במקום תיקיית ה-AppData האישית.",
+      changelog_lead:"הערות גרסה מלאות: הערות גרסה ב-GitHub. עדכונים אחרונים:",
+      cl1_h:"0.5.10",
+      cl1_p:"העדכונים קורים עכשיו לבד: בדיקה אחרי ההפעלה וכל ~6 שעות, הורדה ואימות ברקע (גודל, סוג קובץ, sha256), התקנה שקטה כשאתם לא ליד המחשב, והאפליקציה נפתחת מחדש לבד. ההגדרה מופעלת כברירת מחדל.",
+      cl2_h:"0.5.6",
+      cl2_p:"כפתור \"עדכן עכשיו\" בטאב אודות: מוריד את ההתקנה ומריץ אותה בשקט במקום להפנות אתכם לעמוד ההורדה.",
+      cl3_h:"0.5.3",
+      cl3_p:"מעבר ההפצה לריפו ציבורי ב-GitHub (הגרסאות מתפרסמות שם) והוספת בדיקת העדכונים האוטומטית.",
       faq_h2:"שאלות שאנשים באמת שואלים",
       faq1_q:"האם המידע שלי נשלח לאיפשהו, לענן או ל-Claude/OpenAI?",
       faq1_a:"לא, כברירת מחדל. הכל — כותרות חלונות, צילומי מסך, טקסט OCR, מסד הדפוסים — נשאר בקובץ SQLite מקומי על המחשב שלך. יש פיצ'ר אחד אופציונלי, כבוי כברירת מחדל, \"סיכום AI\"; אם מפעילים אותו ומגדירים מפתח API בעצמך, נשלחים רק מספרים מצטברים (קטגוריה, שם אפליקציה, דקות, מספר חזרות) לכתובת שהגדרת — אף פעם לא צילומי מסך, אף פעם לא כותרות חלון גולמיות, אף פעם לא מפתח ה-API של אף אחד חוץ ממך.",
@@ -377,7 +377,7 @@
       faq6_q:"איך מסירים את זה, והאם זה מנקה הכל?",
       faq6_a:"הגדרות Windows ← אפליקציות ← AutoProcess Twin ← הסר. זה מסיר את הקבצים המותקנים, קיצורי הדרך, ורשומת הרישום; תישאל בנפרד אם למחוק גם את הדאטה שנאסף.",
       faq7_q:"האם היא מתעדכנת אוטומטית?",
-      faq7_a:"לא — אותו עיקרון של דיווח-בלבד כמו זיהוי הדפוסים. כמה שניות אחרי ההפעלה, פעם אחת בכל הפעלה, האפליקציה מבצעת בדיקה אחת מול עמוד ה-GitHub Releases הפומבי של הפרויקט. אם יש שם גרסה חדשה יותר, מוצגת התראה שקטה וניתנת לסגירה עם קישור להערות ה-release — שום דבר לא מוריד או מתקין בלי שתלחצו בעצמכם ותבחרו לעשות זאת. כל תקלת רשת שקטה ואינה מפריעה לאפליקציה.",
+      faq7_a:"לא — אותו עיקרון כמו בזיהוי הדפוסים. כמה שניות אחרי ההפעלה ואז בערך כל 6 שעות, האפליקציה מבצעת בדיקה אחת מול עמוד ה-GitHub Releases הפומבי של הפרויקט. אם יש שם גרסה חדשה יותר, היא מורידה את ההתקנה, מאמתת אותה (גודל, סוג קובץ, sha256) ומתקינה בשקט כשאתם לא ליד המחשב; Windows עדיין מבקש אישור UAC, ואפשר לכבות את ההתקנה האוטומטית בהגדרות ולקבל התראה שקטה בלבד. כל תקלת רשת שקטה, נרשמת לקובץ update.log מקומי ואינה מפריעה לאפליקציה.",
       privacy_h2:"פרטיות, בשפה פשוטה",
       privacy_badge:"100% מקומי כברירת מחדל",
       privacy_intro:"AutoProcess Twin צופה בפעילות על המחשב שעליו הוא מותקן, כדי לזהות עבודה ידנית חוזרת. הנה בדיוק מה זה אומר בפועל:",
